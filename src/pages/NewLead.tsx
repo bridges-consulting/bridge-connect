@@ -2,30 +2,22 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, ChevronRight, ChevronLeft } from "lucide-react";
+import { CheckCircle2, Circle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 type Visto = "EB-1A" | "EB-1B" | "EB-1C" | "EB-2 NIW" | null;
 type Nivel = "ALTA" | "MÉDIA" | "BAIXA" | null;
 
 interface FormData {
-  nome: string; whatsapp: string; email: string;
-  cidade: string; idade: string; consultor: string;
-  area: string; outra_area: string; experiencia: string;
-  cargo: string; vinculo: string; operacao_eua: string;
+  nome: string; whatsapp: string; email: string; cidade: string;
+  idade: string; consultor: string; area: string; outra_area: string;
+  experiencia: string; cargo: string; vinculo: string; operacao_eua: string;
   visto: Visto; evidencias: Record<string, boolean>;
   nivel_elegibilidade: Nivel; justificativa: string;
-  motivacao: string; familiar_eua: string;
-  tentativa_anterior: string; nivel_decisao: number;
-  canal: string; indicador: string; duvidas: string;
+  motivacao: string; familiar_eua: string; tentativa_anterior: string;
+  nivel_decisao: number; canal: string; indicador: string; duvidas: string;
 }
-
-const INITIAL: FormData = {
-  nome: "", whatsapp: "", email: "", cidade: "", idade: "", consultor: "",
-  area: "", outra_area: "", experiencia: "", cargo: "", vinculo: "", operacao_eua: "",
-  visto: null, evidencias: {}, nivel_elegibilidade: null, justificativa: "",
-  motivacao: "", familiar_eua: "", tentativa_anterior: "", nivel_decisao: 3,
-  canal: "", indicador: "", duvidas: "",
-};
 
 const CRITERIOS: Record<string, string[]> = {
   "EB-1A": [
@@ -46,7 +38,7 @@ const CRITERIOS: Record<string, string[]> = {
     "Material em publicações profissionais escritas por terceiros",
     "Participou como avaliador do trabalho de outros na mesma área acadêmica",
     "Contribuições originais de pesquisa científica ou acadêmica",
-    "Autoria de livros ou artigos acadêmicos em periódicos de circulação internacional",
+    "Autoria de livros ou artigos em periódicos de circulação internacional",
   ],
   "EB-1C": [
     "Atuou fora do país por pelo menos 1 ano nos últimos 3 anos",
@@ -80,8 +72,21 @@ const VINCULOS = [
 ];
 
 const CANAIS = ["LinkedIn", "Indicação", "Instagram", "Google", "WhatsApp / Grupo", "Outro"];
-const SLIDER_LABELS = ["", "Ainda pesquisando", "Curiosidade inicial", "Em avaliação", "Pronto para decidir", "Decisão tomada"];
+
+const SLIDER_LABELS = [
+  "", "1 — Ainda pesquisando", "2 — Curiosidade inicial",
+  "3 — Em avaliação", "4 — Pronto para decidir", "5 — Decisão tomada",
+];
+
 const STEPS = ["Identificação", "Perfil", "Visto", "Diagnóstico", "Contexto", "Origem"];
+
+const FORM_INITIAL: FormData = {
+  nome: "", whatsapp: "", email: "", cidade: "", idade: "", consultor: "",
+  area: "", outra_area: "", experiencia: "", cargo: "", vinculo: "", operacao_eua: "",
+  visto: null, evidencias: {}, nivel_elegibilidade: null, justificativa: "",
+  motivacao: "", familiar_eua: "", tentativa_anterior: "", nivel_decisao: 3,
+  canal: "", indicador: "", duvidas: "",
+};
 
 function calcNivel(visto: Visto, count: number): Nivel {
   if (!visto) return null;
@@ -97,15 +102,16 @@ function calcNivel(visto: Visto, count: number): Nivel {
 function gerarJustificativa(visto: Visto, nivel: Nivel, count: number): string {
   if (!visto || !nivel) return "";
   const min = MIN_CRITERIOS[visto] ?? 0;
+  const falta = Math.max(0, min - count);
   if (nivel === "ALTA") return `Candidato atende ${count} critério(s) para ${visto} — acima do mínimo de ${min}. Perfil elegível para protocolo.`;
-  if (nivel === "MÉDIA") return `Candidato atende ${count} de ${min} critério(s) mínimos para ${visto}. Recomendado aprofundar evidências antes da reunião.`;
-  return `Candidato atende apenas ${count} critério(s) para ${visto}. Mínimo: ${min}. Avaliar outros vistos ou buscar documentação adicional.`;
+  if (nivel === "MÉDIA") return `Candidato atende ${count} critério(s) para ${visto}. Faltam ${falta} para o mínimo de ${min}. Recomendado aprofundar evidências.`;
+  return `Candidato atende apenas ${count} critério(s) para ${visto}. Mínimo necessário: ${min}. Avaliar outros vistos ou buscar documentação adicional.`;
 }
 
 function gerarOrientacoes(data: FormData): string[] {
   const tips: string[] = [];
-  if (data.nivel_decisao >= 4) tips.push(`Alto nível de decisão (${data.nivel_decisao}/5) — abordagem direta e objetiva recomendada.`);
-  if (data.familiar_eua === "Sim") tips.push("Possui familiar nos EUA — explorar esse vínculo como âncora emocional.");
+  if (data.nivel_decisao >= 4) tips.push(`Alto nível de decisão (${data.nivel_decisao}/5) — abordagem direta recomendada.`);
+  if (data.familiar_eua === "Sim") tips.push("Possui familiar nos EUA — explorar como âncora emocional para o projeto.");
   if (data.canal === "Indicação" && data.indicador) tips.push(`Veio por indicação de ${data.indicador} — mencionar o nome fortalece o rapport.`);
   if (data.tentativa_anterior === "Sim, sem sucesso") tips.push("Tentativa anterior sem sucesso — abordar com sensibilidade.");
   if (data.visto?.startsWith("EB-1")) tips.push("EB-1 não requer oferta de emprego — destacar essa vantagem estratégica.");
@@ -114,53 +120,109 @@ function gerarOrientacoes(data: FormData): string[] {
   return tips;
 }
 
-const Field = ({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) => (
-  <div className="space-y-1.5">
-    <label className="text-sm font-medium text-foreground/70">
-      {label}{required && <span className="text-primary ml-1">*</span>}
-    </label>
-    {children}
-  </div>
-);
+// ─── SUBCOMPONENTES ───────────────────────────────────────────────────────────
 
-const ic = "w-full bg-surface border border-border rounded-md px-3 py-2.5 text-sm text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary transition-colors";
-
-const RadioOption = ({ label, value, selected, onChange }: { label: string; value: string; selected: boolean; onChange: (v: string) => void }) => (
-  <div onClick={() => onChange(value)} className={`flex items-center gap-3 px-3 py-2.5 rounded-md border cursor-pointer transition-colors text-sm ${selected ? "border-primary/50 bg-primary/10 text-foreground" : "border-border bg-surface text-foreground/60 hover:text-foreground"}`}>
-    <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${selected ? "border-primary bg-primary" : "border-foreground/30"}`} />
-    {label}
-  </div>
-);
-
-const CheckOption = ({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) => (
-  <div onClick={onChange} className={`flex items-center gap-3 px-3 py-2.5 rounded-md border cursor-pointer transition-colors text-sm ${checked ? "border-primary/50 bg-primary/10 text-foreground" : "border-border bg-surface text-foreground/60 hover:text-foreground"}`}>
-    <div className={`w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center ${checked ? "border-primary bg-primary" : "border-foreground/30"}`}>
-      {checked && <span className="text-background text-[10px] font-bold leading-none">✓</span>}
+function FormField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-sm font-medium text-foreground/60">{label}</label>
+      {children}
     </div>
-    {label}
-  </div>
-);
+  );
+}
 
-const VistoCard = ({ code, name, desc, selected, onClick }: { code: string; name: string; desc: string; selected: boolean; onClick: () => void }) => (
-  <div onClick={onClick} className={`p-4 rounded-lg border cursor-pointer transition-colors ${selected ? "border-primary bg-primary/10" : "border-border bg-card hover:border-border/80"}`}>
-    <div className={`text-base font-bold mb-0.5 ${selected ? "text-primary" : "text-foreground"}`}>{code}</div>
-    <div className="text-xs text-foreground/50">{name}</div>
-    <div className="text-xs text-foreground/30 mt-1">{desc}</div>
-  </div>
-);
+function TextInput({ value, onChange, placeholder, type = "text" }: {
+  value: string; onChange: (v: string) => void; placeholder?: string; type?: string;
+}) {
+  return (
+    <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+      className="w-full bg-surface/50 border border-border rounded-md px-3 py-2.5 text-sm text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary transition-colors" />
+  );
+}
 
-const nivelVariant: Record<string, string> = {
-  ALTA: "bg-green-500/20 text-green-300 border-green-500/30",
-  MÉDIA: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
-  BAIXA: "bg-red-500/20 text-red-300 border-red-500/30",
-};
+function TextArea({ value, onChange, placeholder }: {
+  value: string; onChange: (v: string) => void; placeholder?: string;
+}) {
+  return (
+    <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={3}
+      className="w-full bg-surface/50 border border-border rounded-md px-3 py-2.5 text-sm text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary transition-colors resize-none" />
+  );
+}
+
+function SelectInput({ value, onChange, options, placeholder }: {
+  value: string; onChange: (v: string) => void; options: string[]; placeholder?: string;
+}) {
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)}
+      className="w-full bg-surface/50 border border-border rounded-md px-3 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary transition-colors">
+      {placeholder && <option value="">{placeholder}</option>}
+      {options.map((o) => <option key={o} value={o}>{o}</option>)}
+    </select>
+  );
+}
+
+function RadioGroup({ options, value, onChange }: {
+  options: string[]; value: string; onChange: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      {options.map((opt) => (
+        <div key={opt} onClick={() => onChange(opt)}
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-md border text-sm cursor-pointer transition-colors ${
+            value === opt ? "border-primary/50 bg-primary/10 text-foreground" : "border-border bg-surface/30 text-foreground/60 hover:bg-surface/60 hover:text-foreground"
+          }`}>
+          <span className={`h-4 w-4 rounded-full border-2 flex-shrink-0 transition-colors ${value === opt ? "border-primary bg-primary" : "border-foreground/30"}`} />
+          {opt}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CheckItem({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
+  return (
+    <div onClick={onChange}
+      className={`flex items-start gap-3 px-3 py-2.5 rounded-md border text-sm cursor-pointer transition-colors ${
+        checked ? "border-primary/50 bg-primary/10 text-foreground" : "border-border bg-surface/30 text-foreground/60 hover:bg-surface/60 hover:text-foreground"
+      }`}>
+      <span className={`mt-0.5 h-4 w-4 rounded flex-shrink-0 border-2 flex items-center justify-center text-xs font-bold transition-colors ${checked ? "border-primary bg-primary text-background" : "border-foreground/30"}`}>
+        {checked && "✓"}
+      </span>
+      {label}
+    </div>
+  );
+}
+
+function VistoCard({ code, name, selected, onClick }: { code: string; name: string; selected: boolean; onClick: () => void }) {
+  return (
+    <div onClick={onClick}
+      className={`p-4 rounded-lg border text-center cursor-pointer transition-colors ${selected ? "border-primary/60 bg-primary/10" : "border-border bg-card hover:border-primary/30 hover:bg-surface/50"}`}>
+      <p className="text-base font-bold text-primary mb-1">{code}</p>
+      <p className={`text-xs ${selected ? "text-foreground/75" : "text-foreground/40"}`}>{name}</p>
+    </div>
+  );
+}
+
+function NivelBadge({ nivel }: { nivel: Nivel }) {
+  if (!nivel) return null;
+  const variants: Record<string, string> = {
+    ALTA: "bg-green-500/20 text-green-300 border-green-500/30",
+    MÉDIA: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
+    BAIXA: "bg-red-500/20 text-red-300 border-red-500/30",
+  };
+  return <Badge variant="outline" className={variants[nivel]}>{nivel}</Badge>;
+}
+
+// ─── COMPONENTE PRINCIPAL ─────────────────────────────────────────────────────
 
 const NewLead = () => {
   const navigate = useNavigate();
+  const { profile } = useAuth();
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [form, setForm] = useState<FormData>(INITIAL);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState<FormData>(FORM_INITIAL);
 
   const set = (key: keyof FormData, value: unknown) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -173,8 +235,10 @@ const NewLead = () => {
     });
   };
 
-  const selectVisto = (visto: Visto) => setForm((f) => ({ ...f, visto, evidencias: {}, nivel_elegibilidade: null, justificativa: "" }));
-  const countEv = () => Object.values(form.evidencias).filter(Boolean).length;
+  const selectVisto = (visto: Visto) =>
+    setForm((f) => ({ ...f, visto, evidencias: {}, nivel_elegibilidade: null, justificativa: "" }));
+
+  const countEvidencias = () => Object.values(form.evidencias).filter(Boolean).length;
 
   const canNext = () => {
     if (step === 1) return !!(form.nome && form.whatsapp && form.email);
@@ -187,187 +251,283 @@ const NewLead = () => {
 
   const handleSubmit = async () => {
     setSaving(true);
-    // TODO: integrar Supabase
-    // import { supabase } from "@/integrations/supabase/client";
-    // const { data: { user } } = await supabase.auth.getUser();
-    // const { data: lead } = await supabase.from("leads").insert({ conector_id: user.id, nome: form.nome, ... }).select().single();
-    // await supabase.from("lead_evidencias").insert(Object.entries(form.evidencias).map(([criterio, checked]) => ({ lead_id: lead.id, criterio, checked })));
-    // await supabase.from("pipeline_stages").insert({ lead_id: lead.id, stage: "Novo Lead", moved_by: user.id });
-    await new Promise((r) => setTimeout(r, 800));
-    setSaving(false);
-    setSaved(true);
+    setError(null);
+    try {
+      const { data: lead, error: leadError } = await supabase
+        .from("leads")
+        .insert({
+          conector_id: profile?.id ?? null,
+          consultor: form.consultor || null,
+          nome: form.nome,
+          email: form.email || null,
+          whatsapp: form.whatsapp || null,
+          cidade: form.cidade || null,
+          idade: form.idade || null,
+          area: form.area === "Outro" ? form.outra_area : form.area,
+          experiencia: form.experiencia || null,
+          cargo: form.cargo || null,
+          vinculo: form.vinculo || null,
+          operacao_eua: form.operacao_eua || null,
+          visto: form.visto,
+          nivel_elegibilidade: form.nivel_elegibilidade,
+          justificativa: form.justificativa || null,
+          motivacao: form.motivacao || null,
+          familiar_eua: form.familiar_eua || null,
+          tentativa_anterior: form.tentativa_anterior || null,
+          nivel_decisao: form.nivel_decisao,
+          canal: form.canal || null,
+          indicador: form.indicador || null,
+          duvidas: form.duvidas || null,
+          status_pipeline: "Novo Lead",
+        })
+        .select()
+        .single();
+
+      if (leadError) throw leadError;
+
+      // Salva evidências
+      const evidenciasParaSalvar = Object.entries(form.evidencias).map(([criterio, checked]) => ({
+        lead_id: lead.id,
+        criterio,
+        checked,
+      }));
+      if (evidenciasParaSalvar.length > 0) {
+        await supabase.from("lead_evidencias").insert(evidenciasParaSalvar);
+      }
+
+      // Registra no pipeline
+      await supabase.from("pipeline_stages").insert({
+        lead_id: lead.id,
+        stage: "Novo Lead",
+        moved_by: profile?.id ?? null,
+      });
+
+      setSaved(true);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Erro ao salvar lead. Tente novamente.");
+    } finally {
+      setSaving(false);
+    }
   };
 
+  const resetForm = () => { setSaved(false); setStep(1); setForm(FORM_INITIAL); };
+
   if (saved) {
+    const orientacoes = gerarOrientacoes(form);
     return (
-      <div className="p-6 lg:p-8 space-y-6 max-w-xl">
-        <div className="flex items-center gap-3">
-          <CheckCircle2 className="h-7 w-7 text-primary" />
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Lead Cadastrado!</h1>
-            <p className="text-foreground/60 text-sm">Briefing gerado com sucesso.</p>
-          </div>
+      <div className="p-6 lg:p-8 max-w-2xl mx-auto space-y-6">
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-6 text-center space-y-2">
+          <CheckCircle2 className="h-10 w-10 text-primary mx-auto" />
+          <h2 className="text-xl font-bold text-foreground">Lead cadastrado com sucesso!</h2>
+          <p className="text-sm text-foreground/60">O lead já aparece no pipeline interno.</p>
         </div>
+
         <div className="rounded-lg border border-border bg-card p-5 space-y-3">
-          <h2 className="text-xs font-semibold text-foreground/40 uppercase tracking-widest">Diagnóstico</h2>
-          <div className="flex items-center justify-between"><span className="text-sm text-foreground/60">Visto analisado</span><span className="text-sm font-bold text-primary">{form.visto}</span></div>
-          <div className="flex items-center justify-between"><span className="text-sm text-foreground/60">Critérios atendidos</span><span className="text-sm font-bold text-foreground">{countEv()} / {form.visto ? CRITERIOS[form.visto]?.length : 0}</span></div>
+          <h3 className="text-xs font-semibold text-foreground/40 uppercase tracking-widest">Diagnóstico</h3>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-foreground/60">Visto analisado</span>
+            <span className="text-sm font-semibold text-primary">{form.visto}</span>
+          </div>
           <div className="flex items-center justify-between">
             <span className="text-sm text-foreground/60">Elegibilidade</span>
-            {form.nivel_elegibilidade && <Badge variant="outline" className={nivelVariant[form.nivel_elegibilidade]}>{form.nivel_elegibilidade}</Badge>}
+            <NivelBadge nivel={form.nivel_elegibilidade} />
           </div>
-          {form.justificativa && <p className="text-xs text-foreground/50 border-l-2 border-primary/40 pl-3 leading-relaxed pt-1">{form.justificativa}</p>}
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-foreground/60">Critérios atendidos</span>
+            <span className="text-sm font-semibold text-foreground">
+              {countEvidencias()} / {form.visto ? CRITERIOS[form.visto]?.length : 0}
+            </span>
+          </div>
+          {form.justificativa && (
+            <p className="text-sm text-foreground/60 pt-2 border-t border-border leading-relaxed">{form.justificativa}</p>
+          )}
         </div>
+
         <div className="rounded-lg border border-border bg-card p-5 space-y-3">
-          <h2 className="text-xs font-semibold text-foreground/40 uppercase tracking-widest">Orientações para a Reunião</h2>
+          <h3 className="text-xs font-semibold text-foreground/40 uppercase tracking-widest">Orientações para a reunião</h3>
           <ul className="space-y-2">
-            {gerarOrientacoes(form).map((tip, i) => (
-              <li key={i} className="flex gap-2 text-sm text-foreground/70"><span className="text-primary mt-0.5 flex-shrink-0">✦</span>{tip}</li>
+            {orientacoes.map((tip, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-foreground/70">
+                <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />
+                {tip}
+              </li>
             ))}
           </ul>
         </div>
+
         <div className="flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={() => { setForm(INITIAL); setStep(1); setSaved(false); }}>Novo Lead</Button>
-          <Button variant="gold" className="flex-1" onClick={() => navigate("/dashboard")}>Ver Dashboard</Button>
+          <Button variant="outline" className="flex-1" onClick={resetForm}>Novo Lead</Button>
+          <Button variant="gold" className="flex-1" onClick={() => navigate("/admin/pipeline")}>Ver Pipeline</Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 lg:p-8 space-y-6 max-w-xl">
+    <div className="p-6 lg:p-8 max-w-2xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Novo Lead</h1>
-        <p className="text-foreground/60 text-sm mt-1">Preencha o briefing de qualificação</p>
+        <p className="text-foreground/60 text-sm mt-1">Qualificação e diagnóstico de elegibilidade</p>
       </div>
+
       <div className="space-y-2">
-        <div className="flex justify-between">
-          <span className="text-xs text-foreground/40">{STEPS[step - 1]}</span>
-          <span className="text-xs text-primary font-medium">{step} / {STEPS.length}</span>
+        <div className="flex justify-between text-xs text-foreground/40">
+          <span>{STEPS[step - 1]}</span>
+          <span>{step} / {STEPS.length}</span>
         </div>
         <div className="flex gap-1">
-          {STEPS.map((_, i) => <div key={i} className={`h-1 flex-1 rounded-full transition-colors duration-300 ${i < step ? "bg-primary" : "bg-border"}`} />)}
+          {STEPS.map((_, i) => (
+            <div key={i} className={`flex-1 h-1 rounded-full transition-all duration-300 ${i < step ? "bg-primary" : "bg-surface"}`} />
+          ))}
         </div>
       </div>
 
       <div className="rounded-lg border border-border bg-card p-6 space-y-5">
+
         {step === 1 && (
           <>
-            <div><h2 className="text-lg font-semibold text-foreground">Identificação do Candidato</h2><p className="text-sm text-foreground/50">Dados básicos de contato.</p></div>
-            <Field label="Nome completo" required><input className={ic} value={form.nome} onChange={(e) => set("nome", e.target.value)} placeholder="João da Silva" /></Field>
-            <Field label="WhatsApp" required><input className={ic} value={form.whatsapp} onChange={(e) => set("whatsapp", e.target.value)} placeholder="(11) 99999-9999" /></Field>
-            <Field label="E-mail" required><input className={ic} type="email" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="joao@email.com" /></Field>
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Cidade / Estado"><input className={ic} value={form.cidade} onChange={(e) => set("cidade", e.target.value)} placeholder="São Paulo, SP" /></Field>
-              <Field label="Idade"><input className={ic} type="number" value={form.idade} onChange={(e) => set("idade", e.target.value)} placeholder="42" /></Field>
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Identificação do Candidato</h2>
+              <p className="text-sm text-foreground/50 mt-0.5">Dados básicos de contato.</p>
             </div>
-            <Field label="Consultor responsável"><input className={ic} value={form.consultor} onChange={(e) => set("consultor", e.target.value)} placeholder="Nome do consultor" /></Field>
+            <div className="space-y-4">
+              <FormField label="Nome completo *"><TextInput value={form.nome} onChange={(v) => set("nome", v)} placeholder="João da Silva" /></FormField>
+              <FormField label="WhatsApp *"><TextInput value={form.whatsapp} onChange={(v) => set("whatsapp", v)} placeholder="(11) 99999-9999" /></FormField>
+              <FormField label="E-mail *"><TextInput type="email" value={form.email} onChange={(v) => set("email", v)} placeholder="candidato@email.com" /></FormField>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField label="Cidade / Estado"><TextInput value={form.cidade} onChange={(v) => set("cidade", v)} placeholder="São Paulo, SP" /></FormField>
+                <FormField label="Idade"><TextInput type="number" value={form.idade} onChange={(v) => set("idade", v)} placeholder="42" /></FormField>
+              </div>
+              <FormField label="Consultor responsável"><TextInput value={form.consultor} onChange={(v) => set("consultor", v)} placeholder="Nome do consultor" /></FormField>
+            </div>
           </>
         )}
+
         {step === 2 && (
           <>
-            <div><h2 className="text-lg font-semibold text-foreground">Perfil Profissional</h2><p className="text-sm text-foreground/50">Área de atuação e vínculo atual.</p></div>
-            <Field label="Área de atuação" required>
-              <select className={ic + " cursor-pointer"} value={form.area} onChange={(e) => set("area", e.target.value)}>
-                <option value="">Selecione...</option>
-                {AREAS.map((a) => <option key={a} value={a}>{a}</option>)}
-              </select>
-            </Field>
-            {form.area === "Outro" && <Field label="Qual área?"><input className={ic} value={form.outra_area} onChange={(e) => set("outra_area", e.target.value)} placeholder="Descreva a área" /></Field>}
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Anos de experiência"><input className={ic} type="number" value={form.experiencia} onChange={(e) => set("experiencia", e.target.value)} placeholder="15" /></Field>
-              <Field label="Cargo atual"><input className={ic} value={form.cargo} onChange={(e) => set("cargo", e.target.value)} placeholder="CEO, Diretor..." /></Field>
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Perfil Profissional</h2>
+              <p className="text-sm text-foreground/50 mt-0.5">Área de atuação e tipo de vínculo.</p>
             </div>
-            <Field label="Tipo de vínculo" required>
-              <div className="space-y-2">{VINCULOS.map((v) => <RadioOption key={v} label={v} value={v} selected={form.vinculo === v} onChange={(val) => set("vinculo", val)} />)}</div>
-            </Field>
-            {(form.vinculo === "CLT / Empregado formal" || form.vinculo === "Executivo em multinacional") && (
-              <Field label="A empresa possui operação nos EUA?">
-                <div className="space-y-2">{["Sim", "Não", "Não sei"].map((v) => <RadioOption key={v} label={v} value={v} selected={form.operacao_eua === v} onChange={(val) => set("operacao_eua", val)} />)}</div>
-              </Field>
-            )}
+            <div className="space-y-4">
+              <FormField label="Área de atuação *"><SelectInput value={form.area} onChange={(v) => set("area", v)} options={AREAS} placeholder="Selecione..." /></FormField>
+              {form.area === "Outro" && <FormField label="Qual área?"><TextInput value={form.outra_area} onChange={(v) => set("outra_area", v)} placeholder="Descreva a área" /></FormField>}
+              <div className="grid grid-cols-2 gap-4">
+                <FormField label="Anos de experiência"><TextInput type="number" value={form.experiencia} onChange={(v) => set("experiencia", v)} placeholder="15" /></FormField>
+                <FormField label="Cargo atual"><TextInput value={form.cargo} onChange={(v) => set("cargo", v)} placeholder="CEO, Diretor..." /></FormField>
+              </div>
+              <FormField label="Tipo de vínculo *"><RadioGroup options={VINCULOS} value={form.vinculo} onChange={(v) => set("vinculo", v)} /></FormField>
+              {(form.vinculo === "CLT / Empregado formal" || form.vinculo === "Executivo em multinacional") && (
+                <FormField label="A empresa possui operação nos EUA?"><RadioGroup options={["Sim", "Não", "Não sei"]} value={form.operacao_eua} onChange={(v) => set("operacao_eua", v)} /></FormField>
+              )}
+            </div>
           </>
         )}
+
         {step === 3 && (
           <>
-            <div><h2 className="text-lg font-semibold text-foreground">Análise de Visto</h2><p className="text-sm text-foreground/50">Selecione o visto e marque os critérios atendidos.</p></div>
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Análise de Visto</h2>
+              <p className="text-sm text-foreground/50 mt-0.5">Selecione o visto e marque os critérios atendidos.</p>
+            </div>
             <div className="grid grid-cols-2 gap-3">
-              <VistoCard code="EB-1A" name="Extraordinary Ability" desc="Mín. 3 de 10 critérios" selected={form.visto === "EB-1A"} onClick={() => selectVisto("EB-1A")} />
-              <VistoCard code="EB-1B" name="Outstanding Researcher" desc="Mín. 2 de 6 critérios" selected={form.visto === "EB-1B"} onClick={() => selectVisto("EB-1B")} />
-              <VistoCard code="EB-1C" name="Multinational Manager" desc="2 critérios obrigatórios" selected={form.visto === "EB-1C"} onClick={() => selectVisto("EB-1C")} />
-              <VistoCard code="EB-2 NIW" name="National Interest Waiver" desc="Mín. 1 critério" selected={form.visto === "EB-2 NIW"} onClick={() => selectVisto("EB-2 NIW")} />
+              <VistoCard code="EB-1A" name="Extraordinary Ability" selected={form.visto === "EB-1A"} onClick={() => selectVisto("EB-1A")} />
+              <VistoCard code="EB-1B" name="Outstanding Researcher" selected={form.visto === "EB-1B"} onClick={() => selectVisto("EB-1B")} />
+              <VistoCard code="EB-1C" name="Multinational Manager" selected={form.visto === "EB-1C"} onClick={() => selectVisto("EB-1C")} />
+              <VistoCard code="EB-2 NIW" name="National Interest Waiver" selected={form.visto === "EB-2 NIW"} onClick={() => selectVisto("EB-2 NIW")} />
             </div>
             {form.visto && (
-              <>
-                <div className="flex items-center justify-between py-2 border-t border-border">
-                  <span className="text-xs text-foreground/50">Critérios marcados</span>
-                  <Badge variant="outline" className={countEv() >= MIN_CRITERIOS[form.visto] ? "bg-green-500/20 text-green-300 border-green-500/30" : "bg-yellow-500/20 text-yellow-300 border-yellow-500/30"}>
-                    {countEv()} / {MIN_CRITERIOS[form.visto]} mínimo
-                  </Badge>
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-foreground/50">Mínimo para {form.visto}: <span className="text-foreground font-medium">{MIN_CRITERIOS[form.visto]}</span> critério(s)</span>
+                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">{countEvidencias()} marcado(s)</Badge>
                 </div>
                 <div className="space-y-2">
-                  {CRITERIOS[form.visto]?.map((criterio) => <CheckOption key={criterio} label={criterio} checked={!!form.evidencias[criterio]} onChange={() => toggleEvidencia(criterio)} />)}
+                  {CRITERIOS[form.visto]?.map((criterio) => (
+                    <CheckItem key={criterio} label={criterio} checked={!!form.evidencias[criterio]} onChange={() => toggleEvidencia(criterio)} />
+                  ))}
                 </div>
-              </>
+              </div>
             )}
           </>
         )}
+
         {step === 4 && (
           <>
-            <div><h2 className="text-lg font-semibold text-foreground">Diagnóstico de Elegibilidade</h2><p className="text-sm text-foreground/50">Resultado automático com base nos critérios marcados.</p></div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between p-3 rounded-md bg-surface border border-border"><span className="text-sm text-foreground/60">Visto analisado</span><span className="text-sm font-bold text-primary">{form.visto || "—"}</span></div>
-              <div className="flex items-center justify-between p-3 rounded-md bg-surface border border-border"><span className="text-sm text-foreground/60">Critérios atendidos</span><span className="text-sm font-bold text-foreground">{countEv()} / {form.visto ? CRITERIOS[form.visto]?.length : 0}</span></div>
-              <div className="flex items-center justify-between p-3 rounded-md bg-surface border border-border">
-                <span className="text-sm text-foreground/60">Nível de elegibilidade</span>
-                {form.nivel_elegibilidade ? <Badge variant="outline" className={nivelVariant[form.nivel_elegibilidade]}>{form.nivel_elegibilidade}</Badge> : <span className="text-sm text-foreground/30">—</span>}
-              </div>
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Diagnóstico de Elegibilidade</h2>
+              <p className="text-sm text-foreground/50 mt-0.5">Resultado automático com base nos critérios marcados.</p>
             </div>
-            {form.justificativa && <div className="p-3 rounded-md border-l-2 border-primary bg-primary/5 text-sm text-foreground/60 leading-relaxed">{form.justificativa}</div>}
-            {!form.visto && <p className="text-sm text-foreground/40 text-center py-4">Volte ao passo anterior e selecione um visto para ver o diagnóstico.</p>}
+            <div className="space-y-3">
+              <div className="rounded-lg border border-border bg-surface/30 divide-y divide-border">
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-sm text-foreground/60">Visto analisado</span>
+                  <span className="text-sm font-semibold text-primary">{form.visto || "—"}</span>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-sm text-foreground/60">Critérios atendidos</span>
+                  <span className="text-sm font-semibold text-foreground">{countEvidencias()} / {form.visto ? CRITERIOS[form.visto]?.length : 0}</span>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-sm text-foreground/60">Nível de elegibilidade</span>
+                  <NivelBadge nivel={form.nivel_elegibilidade} />
+                </div>
+              </div>
+              {form.justificativa && (
+                <div className="border-l-2 border-primary pl-3 py-1">
+                  <p className="text-sm text-foreground/65 leading-relaxed">{form.justificativa}</p>
+                </div>
+              )}
+              {!form.visto && (
+                <div className="flex items-center gap-2 text-sm text-foreground/40 py-6 justify-center">
+                  <Circle className="h-4 w-4" /> Nenhum visto selecionado na etapa anterior.
+                </div>
+              )}
+            </div>
           </>
         )}
+
         {step === 5 && (
           <>
-            <div><h2 className="text-lg font-semibold text-foreground">Motivação e Contexto</h2><p className="text-sm text-foreground/50">Entender o momento e a intenção do candidato.</p></div>
-            <Field label="Principal motivação para ir aos EUA">
-              <textarea className={ic + " resize-none min-h-[88px]"} value={form.motivacao} onChange={(e) => set("motivacao", e.target.value)} placeholder="Ex.: Trabalho, qualidade de vida, família, negócio..." />
-            </Field>
-            <Field label="Possui familiar ou amigo próximo nos EUA?" required>
-              <div className="space-y-2">{["Sim", "Não"].map((v) => <RadioOption key={v} label={v} value={v} selected={form.familiar_eua === v} onChange={(val) => set("familiar_eua", val)} />)}</div>
-            </Field>
-            <Field label="Já tentou algum processo de visto?" required>
-              <div className="space-y-2">{["Sim, sem sucesso", "Sim, em andamento", "Nunca tentei"].map((v) => <RadioOption key={v} label={v} value={v} selected={form.tentativa_anterior === v} onChange={(val) => set("tentativa_anterior", val)} />)}</div>
-            </Field>
-            <Field label={`Nível de decisão: ${form.nivel_decisao}/5 — ${SLIDER_LABELS[form.nivel_decisao]}`}>
-              <input type="range" min={1} max={5} value={form.nivel_decisao} onChange={(e) => set("nivel_decisao", Number(e.target.value))} className="w-full accent-primary cursor-pointer" />
-              <div className="flex justify-between text-xs text-foreground/30 mt-1"><span>Pesquisando</span><span>Decisão tomada</span></div>
-            </Field>
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Motivação e Contexto</h2>
+              <p className="text-sm text-foreground/50 mt-0.5">Entender o momento e a intenção do candidato.</p>
+            </div>
+            <div className="space-y-4">
+              <FormField label="Principal motivação para ir aos EUA"><TextArea value={form.motivacao} onChange={(v) => set("motivacao", v)} placeholder="Ex.: Trabalho, qualidade de vida, família..." /></FormField>
+              <FormField label="Possui familiar ou amigo próximo nos EUA? *"><RadioGroup options={["Sim", "Não"]} value={form.familiar_eua} onChange={(v) => set("familiar_eua", v)} /></FormField>
+              <FormField label="Já tentou algum processo de visto? *"><RadioGroup options={["Sim, sem sucesso", "Sim, em andamento", "Nunca tentei"]} value={form.tentativa_anterior} onChange={(v) => set("tentativa_anterior", v)} /></FormField>
+              <FormField label={`Nível de decisão: ${SLIDER_LABELS[form.nivel_decisao]}`}>
+                <input type="range" min={1} max={5} value={form.nivel_decisao} onChange={(e) => set("nivel_decisao", Number(e.target.value))} className="w-full accent-primary" />
+                <div className="flex justify-between text-xs text-foreground/30 mt-1"><span>Pesquisando</span><span>Decidido</span></div>
+              </FormField>
+            </div>
           </>
         )}
+
         {step === 6 && (
           <>
-            <div><h2 className="text-lg font-semibold text-foreground">Origem do Lead</h2><p className="text-sm text-foreground/50">Como o candidato chegou até nós?</p></div>
-            <Field label="Canal de origem" required>
-              <div className="space-y-2">{CANAIS.map((v) => <RadioOption key={v} label={v} value={v} selected={form.canal === v} onChange={(val) => set("canal", val)} />)}</div>
-            </Field>
-            {form.canal === "Indicação" && <Field label="Indicado por"><input className={ic} value={form.indicador} onChange={(e) => set("indicador", e.target.value)} placeholder="Nome de quem indicou" /></Field>}
-            <Field label="Dúvidas ou observações do candidato">
-              <textarea className={ic + " resize-none min-h-[88px]"} value={form.duvidas} onChange={(e) => set("duvidas", e.target.value)} placeholder="Anote qualquer observação relevante..." />
-            </Field>
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Origem do Lead</h2>
+              <p className="text-sm text-foreground/50 mt-0.5">Como o candidato chegou até nós?</p>
+            </div>
+            <div className="space-y-4">
+              <FormField label="Canal de origem *"><RadioGroup options={CANAIS} value={form.canal} onChange={(v) => set("canal", v)} /></FormField>
+              {form.canal === "Indicação" && <FormField label="Indicado por"><TextInput value={form.indicador} onChange={(v) => set("indicador", v)} placeholder="Nome de quem indicou" /></FormField>}
+              <FormField label="Dúvidas ou observações"><TextArea value={form.duvidas} onChange={(v) => set("duvidas", v)} placeholder="Anote qualquer observação relevante..." /></FormField>
+              {error && <div className="rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>}
+            </div>
           </>
         )}
       </div>
 
-      <div className="flex justify-between gap-3">
-        {step > 1 ? (
-          <Button variant="outline" className="gap-1.5" onClick={() => setStep((s) => s - 1)}><ChevronLeft className="h-4 w-4" /> Voltar</Button>
-        ) : <div />}
-        {step < 6 ? (
-          <Button variant="gold" className="gap-1.5" disabled={!canNext()} onClick={() => setStep((s) => s + 1)}>Continuar <ChevronRight className="h-4 w-4" /></Button>
-        ) : (
-          <Button variant="gold" className="gap-1.5" disabled={saving || !canNext()} onClick={handleSubmit}>{saving ? "Salvando..." : "Gerar Briefing ✦"}</Button>
-        )}
+      <div className="flex gap-3">
+        {step > 1 ? <Button variant="outline" onClick={() => setStep((s) => s - 1)}>← Voltar</Button> : <div />}
+        <div className="flex-1" />
+        {step < 6
+          ? <Button variant="gold" disabled={!canNext()} onClick={() => setStep((s) => s + 1)}>Continuar →</Button>
+          : <Button variant="gold" disabled={saving || !canNext()} onClick={handleSubmit}>{saving ? "Salvando..." : "Gerar Briefing ✦"}</Button>
+        }
       </div>
     </div>
   );
