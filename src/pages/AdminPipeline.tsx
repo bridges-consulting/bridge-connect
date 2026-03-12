@@ -223,7 +223,7 @@ const AdminPipeline = () => {
       setMovingId(draggableId);
       const { error } = await supabase
         .from("leads")
-        .update({ status_pipeline: destination.droppableId })
+        .update({ status_pipeline: destination.droppableId } as any)
         .eq("id", draggableId);
 
       if (!error) {
