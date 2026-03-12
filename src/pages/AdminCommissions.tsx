@@ -91,9 +91,9 @@ const AdminCommissions = () => {
         ? { status: novoStatus, valor_liberado: comissao.valor_previsto }
         : { status: novoStatus, valor_pago: comissao.valor_previsto };
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("comissoes")
-      .update({ ...updatePayload, updated_at: new Date().toISOString() } as any)
+      .update({ ...updatePayload, updated_at: new Date().toISOString() })
       .eq("id", comissao.id);
 
     if (!error) {

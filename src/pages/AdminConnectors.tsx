@@ -72,9 +72,9 @@ const AdminConnectors = () => {
   const toggleStatus = async (conector: ConectorRow) => {
     setTogglingId(conector.id);
     const novoStatus = conector.status === "ativo" ? "inativo" : "ativo";
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("profiles")
-      .update({ status: novoStatus } as any)
+      .update({ status: novoStatus })
       .eq("id", conector.id);
 
     if (!error) {
