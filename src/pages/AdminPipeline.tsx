@@ -1,7 +1,9 @@
 import { useState, useCallback, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
-import { GripVertical, RefreshCw, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { GripVertical, RefreshCw, Loader2, Plus } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -54,6 +56,7 @@ const emptyBoard = () =>
 
 const AdminPipeline = () => {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const [data, setData] = useState<Record<string, PipelineLead[]>>(emptyBoard());
   const [loading, setLoading] = useState(true);
   const [movingId, setMovingId] = useState<string | null>(null);
@@ -166,14 +169,19 @@ const AdminPipeline = () => {
             )}
           </p>
         </div>
-        <button
-          onClick={fetchLeads}
-          disabled={loading}
-          className="flex items-center gap-2 text-sm text-foreground/50 hover:text-foreground transition-colors px-3 py-1.5 rounded-md hover:bg-surface/50 border border-border"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          Atualizar
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={fetchLeads}
+            disabled={loading}
+            className="flex items-center gap-2 text-sm text-foreground/50 hover:text-foreground transition-colors px-3 py-1.5 rounded-md hover:bg-surface/50 border border-border"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Atualizar
+          </button>
+          <Button variant="gold" className="gap-2" onClick={() => navigate("/novo-lead")}>
+            <Plus className="h-4 w-4" /> Novo Lead
+          </Button>
+        </div>
       </div>
 
       {/* Loading state */}
