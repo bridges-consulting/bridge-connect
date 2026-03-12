@@ -350,7 +350,7 @@ const NewLead = () => {
           duvidas:            form.duvidas || null,
           status_pipeline:    "Novo Lead",
           arquivado:          false,
-        })
+        } as any)
         .select()
         .single();
 
