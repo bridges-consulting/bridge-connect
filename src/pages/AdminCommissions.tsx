@@ -93,7 +93,7 @@ const AdminCommissions = () => {
 
     const { error } = await supabase
       .from("comissoes")
-      .update({ ...updatePayload, updated_at: new Date().toISOString() })
+      .update({ ...updatePayload, updated_at: new Date().toISOString() } as any)
       .eq("id", comissao.id);
 
     if (!error) {

@@ -74,7 +74,7 @@ const AdminConnectors = () => {
     const novoStatus = conector.status === "ativo" ? "inativo" : "ativo";
     const { error } = await supabase
       .from("profiles")
-      .update({ status: novoStatus })
+      .update({ status: novoStatus } as any)
       .eq("id", conector.id);
 
     if (!error) {

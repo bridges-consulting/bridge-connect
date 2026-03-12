@@ -403,7 +403,7 @@ const NewLead = () => {
           arquivado:       true,
           motivo_exclusao: motivo,
           arquivado_at:    new Date().toISOString(),
-        })
+        } as any)
         .eq("id", savedLeadId);
 
       if (deleteError) throw deleteError;
