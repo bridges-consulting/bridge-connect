@@ -53,6 +53,10 @@ export interface Database {
           indicador: string | null;
           duvidas: string | null;
           status_pipeline: string;
+          // soft delete
+          arquivado: boolean;
+          motivo_exclusao: string | null;
+          arquivado_at: string | null;
           created_at: string;
         };
         Insert: Omit<Database["public"]["Tables"]["leads"]["Row"], "id" | "created_at"> & {
@@ -102,13 +106,29 @@ export interface Database {
         };
         Update: Partial<Database["public"]["Tables"]["comissoes"]["Insert"]>;
       };
+      candidato_status: {
+        Row: {
+          id: string;
+          lead_id: string;
+          etapa_atual: string | null;
+          etapas_concluidas: string[] | null;
+          docs_pendentes: string[] | null;
+          updated_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["candidato_status"]["Row"], "id" | "updated_at"> & {
+          id?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["candidato_status"]["Insert"]>;
+      };
     };
   };
 }
 
 // Tipos auxiliares para uso nos componentes
-export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
-export type Lead = Database["public"]["Tables"]["leads"]["Row"];
-export type LeadEvidencia = Database["public"]["Tables"]["lead_evidencias"]["Row"];
-export type PipelineStage = Database["public"]["Tables"]["pipeline_stages"]["Row"];
-export type Comissao = Database["public"]["Tables"]["comissoes"]["Row"];
+export type Profile        = Database["public"]["Tables"]["profiles"]["Row"];
+export type Lead           = Database["public"]["Tables"]["leads"]["Row"];
+export type LeadEvidencia  = Database["public"]["Tables"]["lead_evidencias"]["Row"];
+export type PipelineStage  = Database["public"]["Tables"]["pipeline_stages"]["Row"];
+export type Comissao       = Database["public"]["Tables"]["comissoes"]["Row"];
+export type CandidatoStatus = Database["public"]["Tables"]["candidato_status"]["Row"];
