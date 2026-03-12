@@ -227,11 +227,11 @@ const AdminPipeline = () => {
         .eq("id", draggableId);
 
       if (!error) {
-        await supabase.from("pipeline_stages").insert({
+        await (supabase as any).from("pipeline_stages").insert({
           lead_id:  draggableId,
           stage:    destination.droppableId,
           moved_by: profile?.id ?? null,
-        } as any);
+        });
       } else {
         console.error("Erro ao mover lead:", error);
         fetchLeads();
