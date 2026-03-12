@@ -59,7 +59,7 @@ const AdminCommissions = () => {
       return;
     }
 
-    const rows: ComissaoRow[] = data.map((c) => {
+    const rows: ComissaoRow[] = (data as any[]).map((c: any) => {
       const lead = c.leads as { nome: string; visto: string | null } | null;
       const conector = c.profiles as { nome: string | null; email: string | null } | null;
       return {
