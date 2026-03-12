@@ -54,8 +54,9 @@ const Login = () => {
       <div className="w-full max-w-md p-8 rounded-lg border border-primary/40 bg-card">
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-foreground tracking-wide">THE BRIDGE</h1>
-          <p className="text-sm text-primary font-medium tracking-widest">Consulting</p>
+          <h1 className="text-2xl font-bold text-foreground tracking-wide">
+            <span className="text-foreground/60">Programa</span> BRIDGES
+          </h1>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
