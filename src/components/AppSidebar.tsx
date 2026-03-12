@@ -19,8 +19,9 @@ const connectorLinks = [
 
 const adminLinks = [
   { to: "/admin/pipeline", label: "Pipeline", icon: Kanban },
+  { to: "/novo-lead",      label: "Novo Lead", icon: Plus },
   { to: "/admin/conectores", label: "Conectores", icon: Users },
-  { to: "/admin/comissoes", label: "Comissões", icon: DollarSign },
+  { to: "/admin/comissoes",  label: "Comissões", icon: DollarSign },
 ];
 
 interface AppSidebarProps {
