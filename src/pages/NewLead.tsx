@@ -397,13 +397,13 @@ const NewLead = () => {
     if (!savedLeadId) return;
     setDeleting(true);
     try {
-      const { error: deleteError } = await supabase
+      const { error: deleteError } = await (supabase as any)
         .from("leads")
         .update({
           arquivado:       true,
           motivo_exclusao: motivo,
           arquivado_at:    new Date().toISOString(),
-        } as any)
+        })
         .eq("id", savedLeadId);
 
       if (deleteError) throw deleteError;

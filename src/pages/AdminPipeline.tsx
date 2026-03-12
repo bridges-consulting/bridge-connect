@@ -250,13 +250,13 @@ const AdminPipeline = () => {
     if (!archiveTarget) return;
     setArchiving(true);
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("leads")
       .update({
         arquivado:       true,
         motivo_exclusao: motivo,
         arquivado_at:    new Date().toISOString(),
-      } as any)
+      })
       .eq("id", archiveTarget.id);
 
     if (!error) {
