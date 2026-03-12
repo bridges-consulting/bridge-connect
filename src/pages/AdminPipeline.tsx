@@ -221,9 +221,9 @@ const AdminPipeline = () => {
 
     if (source.droppableId !== destination.droppableId) {
       setMovingId(draggableId);
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("leads")
-        .update({ status_pipeline: destination.droppableId } as any)
+        .update({ status_pipeline: destination.droppableId })
         .eq("id", draggableId);
 
       if (!error) {
