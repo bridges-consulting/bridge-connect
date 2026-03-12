@@ -231,7 +231,7 @@ const AdminPipeline = () => {
           lead_id:  draggableId,
           stage:    destination.droppableId,
           moved_by: profile?.id ?? null,
-        });
+        } as any);
       } else {
         console.error("Erro ao mover lead:", error);
         fetchLeads();
