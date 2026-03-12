@@ -358,32 +358,32 @@ const NewLead = () => {
 
       // 2. Salva evidências
       const evidenciasParaSalvar = Object.entries(form.evidencias).map(([criterio, checked]) => ({
-        lead_id: lead.id,
+        lead_id: (lead as any).id,
         criterio,
         checked,
       }));
       if (evidenciasParaSalvar.length > 0) {
-        await supabase.from("lead_evidencias").insert(evidenciasParaSalvar);
+        await supabase.from("lead_evidencias").insert(evidenciasParaSalvar as any);
       }
 
       // 3. Registra entrada no pipeline
       await supabase.from("pipeline_stages").insert({
-        lead_id:  lead.id,
+        lead_id:  (lead as any).id,
         stage:    "Novo Lead",
         moved_by: profile?.id ?? null,
-      });
+      } as any);
 
       // 4. Cria registro de comissão prevista (Cenário 1 — indicação)
       await supabase.from("comissoes").insert({
-        lead_id:         lead.id,
+        lead_id:         (lead as any).id,
         conector_id:     profile?.id ?? null,
         valor_previsto:  VALOR_BASE * PCT_PREVISTO,
         valor_liberado:  0,
         valor_pago:      0,
         status:          "pendente",
-      });
+      } as any);
 
-      setSavedLeadId(lead.id);
+      setSavedLeadId((lead as any).id);
       setSaved(true);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Erro ao salvar lead. Tente novamente.");
