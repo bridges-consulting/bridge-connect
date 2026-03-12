@@ -59,7 +59,7 @@ const AdminCommissions = () => {
       return;
     }
 
-    const rows: ComissaoRow[] = data.map((c) => {
+    const rows: ComissaoRow[] = (data as any[]).map((c: any) => {
       const lead = c.leads as { nome: string; visto: string | null } | null;
       const conector = c.profiles as { nome: string | null; email: string | null } | null;
       return {
@@ -91,7 +91,7 @@ const AdminCommissions = () => {
         ? { status: novoStatus, valor_liberado: comissao.valor_previsto }
         : { status: novoStatus, valor_pago: comissao.valor_previsto };
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("comissoes")
       .update({ ...updatePayload, updated_at: new Date().toISOString() })
       .eq("id", comissao.id);

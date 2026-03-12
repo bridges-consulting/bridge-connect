@@ -221,13 +221,13 @@ const AdminPipeline = () => {
 
     if (source.droppableId !== destination.droppableId) {
       setMovingId(draggableId);
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("leads")
         .update({ status_pipeline: destination.droppableId })
         .eq("id", draggableId);
 
       if (!error) {
-        await supabase.from("pipeline_stages").insert({
+        await (supabase as any).from("pipeline_stages").insert({
           lead_id:  draggableId,
           stage:    destination.droppableId,
           moved_by: profile?.id ?? null,
@@ -250,7 +250,7 @@ const AdminPipeline = () => {
     if (!archiveTarget) return;
     setArchiving(true);
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("leads")
       .update({
         arquivado:       true,

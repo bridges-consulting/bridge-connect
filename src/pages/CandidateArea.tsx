@@ -80,7 +80,7 @@ const CandidateArea = () => {
         </h2>
         <div>
           <p className="text-sm text-foreground font-medium">Dr. Ricardo Almeida</p>
-          <p className="text-sm text-foreground/60">ricardo@thebridge.com</p>
+          <p className="text-sm text-foreground/60">ricardo@programabridges.com</p>
           <p className="text-sm text-foreground/60">+1 (305) 555-0123</p>
         </div>
       </div>

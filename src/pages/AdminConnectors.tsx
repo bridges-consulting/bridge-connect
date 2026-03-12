@@ -36,7 +36,7 @@ const AdminConnectors = () => {
 
     // Para cada conector, busca leads e comissões
     const rows = await Promise.all(
-      profiles.map(async (p) => {
+      (profiles as any[]).map(async (p: any) => {
         const { count: totalLeads } = await supabase
           .from("leads")
           .select("*", { count: "exact", head: true })
@@ -47,8 +47,8 @@ const AdminConnectors = () => {
           .select("valor_pago, valor_liberado")
           .eq("conector_id", p.id);
 
-        const totalComissao = (comissoes ?? []).reduce(
-          (sum, c) => sum + (c.valor_pago ?? 0) + (c.valor_liberado ?? 0),
+        const totalComissao = ((comissoes ?? []) as any[]).reduce(
+          (sum: number, c: any) => sum + (c.valor_pago ?? 0) + (c.valor_liberado ?? 0),
           0
         );
 
@@ -72,7 +72,7 @@ const AdminConnectors = () => {
   const toggleStatus = async (conector: ConectorRow) => {
     setTogglingId(conector.id);
     const novoStatus = conector.status === "ativo" ? "inativo" : "ativo";
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("profiles")
       .update({ status: novoStatus })
       .eq("id", conector.id);

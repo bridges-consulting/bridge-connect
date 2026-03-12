@@ -38,8 +38,9 @@ const AppSidebar = ({ role, onSignOut }: AppSidebarProps) => {
     <aside className="w-60 min-h-screen bg-background border-r border-border flex flex-col flex-shrink-0">
       {/* Logo */}
       <div className="p-6 border-b border-border">
-        <h1 className="text-lg font-bold text-foreground tracking-wide">THE BRIDGE</h1>
-        <p className="text-xs text-primary font-medium tracking-widest">Consulting</p>
+        <h1 className="text-lg font-bold text-foreground tracking-wide">
+          <span className="text-foreground/60">Programa</span> BRIDGES
+        </h1>
       </div>
 
       {/* Nav */}
