@@ -296,19 +296,12 @@ const AdminConnectors = () => {
     if (action === "aprovar") {
       setActioning(id);
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-conector`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${session?.access_token}`,
-          },
-          body: JSON.stringify({ candidatura_id: id }),
+        const { data: result, error: fnError } = await supabase.functions.invoke("invite-conector", {
+          body: { candidatura_id: id },
         });
-        const result = await res.json();
-        if (!result.success) throw new Error(result.error);
+        if (fnError) throw new Error(fnError.message);
+        if (!result?.success) throw new Error(result?.error ?? "Erro desconhecido.");
         setCandidaturas(prev => prev.map(c => c.id === id ? { ...c, status: "aprovado", convidado_at: new Date().toISOString() } : c));
-        // Exibe modal com credenciais para o admin repassar pelo WhatsApp
         setCredenciais({ nome: cand.nome, email: result.email, senha: result.senha_temp });
       } catch (e) {
         alert(`Erro ao aprovar: ${e instanceof Error ? e.message : "Tente novamente."}`);
