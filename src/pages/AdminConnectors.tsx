@@ -296,8 +296,10 @@ const AdminConnectors = () => {
     if (action === "aprovar") {
       setActioning(id);
       try {
+        const { data: { session } } = await supabase.auth.getSession();
         const { data: result, error: fnError } = await supabase.functions.invoke("invite-conector", {
           body: { candidatura_id: id },
+          headers: { Authorization: `Bearer ${session?.access_token}` },
         });
         if (fnError) throw new Error(fnError.message);
         if (!result?.success) throw new Error(result?.error ?? "Erro desconhecido.");
