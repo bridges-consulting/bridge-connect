@@ -39,6 +39,69 @@ const STATUS_CONFIG: Record<CandStatus, { label: string; cls: string }> = {
 
 // ─── Modal de rejeição ────────────────────────────────────────────────────────
 
+// ─── Modal de credenciais ─────────────────────────────────────────────────────
+
+function CredenciaisModal({ nome, email, senha, onClose }: {
+  nome: string; email: string; senha: string; onClose: () => void;
+}) {
+  const [copiado, setCopiado] = useState(false);
+
+  const texto = `Olá, ${nome}! Seu acesso ao Programa Bridges foi aprovado 🎉\n\nAcesse a plataforma em: https://programabridges.lovable.app/login\n\nE-mail: ${email}\nSenha temporária: ${senha}\n\nRecomendamos alterar sua senha no primeiro acesso.`;
+
+  const copiar = () => {
+    navigator.clipboard.writeText(texto);
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 2500);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+      <div className="w-full max-w-md rounded-xl border border-primary/30 bg-card shadow-2xl">
+        <div className="flex items-start justify-between p-5 border-b border-border">
+          <div>
+            <h3 className="text-base font-semibold text-foreground">✦ Conta criada com sucesso</h3>
+            <p className="text-xs text-foreground/50 mt-0.5">{nome} agora é um Conector Bridges</p>
+          </div>
+          <button onClick={onClose} className="text-foreground/40 hover:text-foreground transition-colors"><X className="h-5 w-5"/></button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <p className="text-xs text-foreground/50 leading-relaxed">
+            Compartilhe as credenciais abaixo com o conector pelo WhatsApp. Ele poderá alterar a senha após o primeiro acesso.
+          </p>
+
+          <div className="rounded-lg bg-surface/50 border border-border p-4 space-y-2.5 font-mono text-sm">
+            <div className="flex justify-between items-center">
+              <span className="text-foreground/40 text-xs uppercase tracking-widest">E-mail</span>
+              <span className="text-foreground">{email}</span>
+            </div>
+            <div className="h-px bg-border"/>
+            <div className="flex justify-between items-center">
+              <span className="text-foreground/40 text-xs uppercase tracking-widest">Senha</span>
+              <span className="text-primary font-bold tracking-wider">{senha}</span>
+            </div>
+          </div>
+
+          <button onClick={copiar}
+            className="w-full py-2.5 rounded-lg border border-primary/30 bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors">
+            {copiado ? "✓ Copiado!" : "Copiar mensagem para WhatsApp"}
+          </button>
+
+          <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-3 text-xs text-foreground/40 whitespace-pre-wrap leading-relaxed">
+            {texto}
+          </div>
+        </div>
+
+        <div className="px-5 pb-5">
+          <Button variant="gold" onClick={onClose} className="w-full">Fechar</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Modal de rejeição ────────────────────────────────────────────────────────
+
 function RejectModal({ nome, onConfirm, onCancel, loading }: {
   nome: string; onConfirm: (motivo: string) => void; onCancel: () => void; loading: boolean;
 }) {
@@ -167,6 +230,7 @@ const AdminConnectors = () => {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [actioning, setActioning]  = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<Candidatura | null>(null);
+  const [credenciais, setCredenciais] = useState<{ nome: string; email: string; senha: string } | null>(null);
   const [filterStatus, setFilterStatus] = useState<CandStatus | "todas">("pendente");
 
   // ── Fetch conectores ───────────────────────────────────────────────────────
@@ -239,13 +303,15 @@ const AdminConnectors = () => {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${session?.access_token}`,
           },
-          body: JSON.stringify({ candidatura_id: id, email: cand.email, nome: cand.nome }),
+          body: JSON.stringify({ candidatura_id: id }),
         });
         const result = await res.json();
         if (!result.success) throw new Error(result.error);
         setCandidaturas(prev => prev.map(c => c.id === id ? { ...c, status: "aprovado", convidado_at: new Date().toISOString() } : c));
+        // Exibe modal com credenciais para o admin repassar pelo WhatsApp
+        setCredenciais({ nome: cand.nome, email: result.email, senha: result.senha_temp });
       } catch (e) {
-        alert(`Erro ao enviar convite: ${e instanceof Error ? e.message : "Tente novamente."}`);
+        alert(`Erro ao aprovar: ${e instanceof Error ? e.message : "Tente novamente."}`);
       }
       setActioning(null);
     }
@@ -267,6 +333,14 @@ const AdminConnectors = () => {
 
   return (
     <>
+      {credenciais && (
+        <CredenciaisModal
+          nome={credenciais.nome}
+          email={credenciais.email}
+          senha={credenciais.senha}
+          onClose={() => setCredenciais(null)}
+        />
+      )}
       {rejectTarget && (
         <RejectModal nome={rejectTarget.nome} onConfirm={handleReject} onCancel={() => setRejectTarget(null)} loading={!!actioning} />
       )}
