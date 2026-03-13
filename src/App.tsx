@@ -7,6 +7,7 @@ import AppSidebar from "@/components/AppSidebar";
 import Login from "./pages/Login";
 import ConnectorDashboard from "./pages/ConnectorDashboard";
 import NewLead from "./pages/NewLead";
+import RegisterConector from "./pages/RegisterConector";
 import AdminPipeline from "./pages/AdminPipeline";
 import AdminConnectors from "./pages/AdminConnectors";
 import AdminCommissions from "./pages/AdminCommissions";
@@ -77,6 +78,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/cadastro" element={<RegisterConector />} />
           <Route path="/*" element={<AppLayout />} />
         </Routes>
       </BrowserRouter>
