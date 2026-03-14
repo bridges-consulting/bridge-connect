@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
-type Role = "conector" | "lider" | "estrategista";
+type Role = "conector" | "lider" | "estrategista" | "admin";
 
 interface ConectorRow {
   id: string; nome: string | null; email: string | null;
@@ -25,7 +25,8 @@ interface Candidatura {
   id: string; nome: string; email: string; whatsapp: string;
   cidade: string | null; ocupacao: string | null; tamanho_rede: string | null;
   canais_indicacao: string[] | null; como_conheceu: string | null;
-  indicado_por: string | null; relacionamento: string | null;
+  indicado_por: string | null; indicado_por_profile_id: string | null;
+  relacionamento: string | null;
   status: CandStatus; notas_admin: string | null; created_at: string;
   convidado_at: string | null;
 }
@@ -191,9 +192,14 @@ function CreateEquipeModal({ lideres, onConfirm, onCancel, loading }: {
             <label className="text-xs font-semibold tracking-widest uppercase text-primary/80">Líder <span className="text-primary">*</span></label>
             <select value={liderId} onChange={e => setLiderId(e.target.value)}
               className="w-full bg-white/[0.05] border border-white/10 rounded-lg px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary/60 transition-colors cursor-pointer">
-              {lideres.map(l => <option key={l.id} value={l.id} style={{background:"#1a4a3a"}}>{l.nome ?? l.email}</option>)}
+              <option value="" style={{background:"#1a4a3a"}}>Selecione o líder</option>
+              {lideres.map(l => (
+                <option key={l.id} value={l.id} style={{background:"#1a4a3a"}}>
+                  {l.nome ?? l.email}{l.role === "admin" ? " (Admin)" : ""}
+                </option>
+              ))}
             </select>
-            {lideres.length === 0 && <p className="text-xs text-red-400">Nenhum Líder de Conexão cadastrado ainda. Promova um conector primeiro.</p>}
+            {lideres.length === 0 && <p className="text-xs text-red-400">Nenhum líder disponível.</p>}
           </div>
         </div>
         <div className="flex gap-3 p-5 border-t border-border">
@@ -207,11 +213,18 @@ function CreateEquipeModal({ lideres, onConfirm, onCancel, loading }: {
 
 // ─── Card de candidatura ──────────────────────────────────────────────────────
 
-function CandCard({ c, onAction }: {
-  c: Candidatura; onAction: (id: string, a: "entrevista" | "aprovar" | "rejeitar") => void;
+function CandCard({ c, conectores, onAction, onVincularIndicador }: {
+  c: Candidatura;
+  conectores: ConectorRow[];
+  onAction: (id: string, a: "entrevista" | "aprovar" | "rejeitar") => void;
+  onVincularIndicador: (candidaturaId: string, profileId: string | null) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const cfg = STATUS_CAND[c.status];
+
+  // Só mostra o seletor se veio por indicação e ainda não foi vinculado
+  const precisaVincular = c.como_conheceu === "Indicação de outro conector";
+
   return (
     <div className="rounded-lg border border-border bg-card overflow-hidden">
       <div className="flex items-start justify-between p-4 gap-3">
@@ -233,7 +246,34 @@ function CandCard({ c, onAction }: {
           {c.ocupacao && <div><p className="text-xs font-semibold text-foreground/40 uppercase tracking-widest mb-1">Ocupação</p><p className="text-sm text-foreground/70">{c.ocupacao}</p></div>}
           {c.tamanho_rede && <div><p className="text-xs font-semibold text-foreground/40 uppercase tracking-widest mb-1">Rede</p><p className="text-sm text-foreground/70">{c.tamanho_rede}</p></div>}
           {c.canais_indicacao?.length && <div><p className="text-xs font-semibold text-foreground/40 uppercase tracking-widest mb-1">Canais</p><div className="flex flex-wrap gap-1.5">{c.canais_indicacao.map(ch => <span key={ch} className="text-xs px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary/80">{ch.split("—")[0].trim()}</span>)}</div></div>}
-          {c.como_conheceu && <div><p className="text-xs font-semibold text-foreground/40 uppercase tracking-widest mb-1">Como conheceu</p><p className="text-sm text-foreground/70">{c.como_conheceu}{c.indicado_por ? ` — por ${c.indicado_por}` : ""}</p></div>}
+
+          {/* Indicação — texto e vínculo com perfil */}
+          {c.como_conheceu && (
+            <div>
+              <p className="text-xs font-semibold text-foreground/40 uppercase tracking-widest mb-1">Como conheceu</p>
+              <p className="text-sm text-foreground/70 mb-2">{c.como_conheceu}{c.indicado_por ? ` — "${c.indicado_por}"` : ""}</p>
+              {precisaVincular && (
+                <div className="space-y-1.5">
+                  <p className="text-xs text-foreground/40">Vincular ao perfil do conector que indicou:</p>
+                  <select
+                    value={c.indicado_por_profile_id ?? ""}
+                    onChange={e => onVincularIndicador(c.id, e.target.value || null)}
+                    className="w-full bg-white/[0.05] border border-white/10 rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/60 transition-colors cursor-pointer">
+                    <option value="" style={{background:"#1a4a3a"}}>Não identificado</option>
+                    {conectores.filter(p => p.role !== "admin").map(p => (
+                      <option key={p.id} value={p.id} style={{background:"#1a4a3a"}}>{p.nome ?? p.email}</option>
+                    ))}
+                  </select>
+                  {c.indicado_por_profile_id && (
+                    <p className="text-xs text-green-400 flex items-center gap-1">
+                      <span>✓</span> Vínculo salvo — equipe será criada automaticamente ao promover
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {c.relacionamento && <div><p className="text-xs font-semibold text-foreground/40 uppercase tracking-widest mb-1">Relacionamento</p><p className="text-sm text-foreground/70">{c.relacionamento}</p></div>}
           {c.convidado_at && <div className="rounded-md bg-green-500/10 border border-green-500/20 px-3 py-2 text-xs text-green-300">Acesso enviado em {fmtDate(c.convidado_at)}</div>}
         </div>
@@ -281,7 +321,7 @@ const AdminConnectors = () => {
   const fetchConectores = async () => {
     setLoading(true);
     const { data: profiles } = await supabase
-      .from("profiles").select("id,nome,email,status,role").in("role",["conector","lider","estrategista"]).order("nome");
+      .from("profiles").select("id,nome,email,status,role").in("role",["conector","lider","estrategista","admin"]).order("nome");
 
     if (!profiles) { setLoading(false); return; }
 
@@ -309,7 +349,7 @@ const AdminConnectors = () => {
   const fetchCandidaturas = async () => {
     setLoading(true);
     const { data } = await supabase.from("candidaturas")
-      .select("id,nome,email,whatsapp,cidade,ocupacao,tamanho_rede,canais_indicacao,como_conheceu,indicado_por,relacionamento,status,notas_admin,created_at,convidado_at")
+      .select("id,nome,email,whatsapp,cidade,ocupacao,tamanho_rede,canais_indicacao,como_conheceu,indicado_por,indicado_por_profile_id,relacionamento,status,notas_admin,created_at,convidado_at")
       .order("created_at",{ascending:false});
     setCandidaturas((data??[]) as Candidatura[]);
     setLoading(false);
@@ -396,6 +436,15 @@ const AdminConnectors = () => {
     setActioning(null);
   };
 
+  const handleVincularIndicador = async (candidaturaId: string, profileId: string | null) => {
+    const { error } = await supabase.from("candidaturas")
+      .update({ indicado_por_profile_id: profileId })
+      .eq("id", candidaturaId);
+    if (!error) setCandidaturas(prev => prev.map(c =>
+      c.id === candidaturaId ? { ...c, indicado_por_profile_id: profileId } : c
+    ));
+  };
+
   // ── Criar equipe ──────────────────────────────────────────────────────────
   const handleCreateEquipe = async (nome: string, liderId: string) => {
     setActioning("create");
@@ -423,7 +472,7 @@ const AdminConnectors = () => {
   };
 
   const pendentes = candidaturas.filter(c => c.status==="pendente").length;
-  const lideres = conectores.filter(c => c.role==="lider" || c.role==="estrategista");
+  const lideres = conectores.filter(c => c.role==="lider" || c.role==="estrategista" || c.role==="admin");
   const filteredCands = filterStatus==="todas" ? candidaturas : candidaturas.filter(c=>c.status===filterStatus);
 
   const TABS: {id:Tab;label:string;icon:any;badge?:number}[] = [
@@ -565,7 +614,7 @@ const AdminConnectors = () => {
                     <p className="text-foreground/40 text-sm">Nenhuma candidatura encontrada.</p>
                   </div>
                 ) : (
-                  <div className="space-y-3">{filteredCands.map(c=><CandCard key={c.id} c={c} onAction={handleAction}/>)}</div>
+                  <div className="space-y-3">{filteredCands.map(c=><CandCard key={c.id} c={c} conectores={conectores} onAction={handleAction} onVincularIndicador={handleVincularIndicador}/>)}</div>
                 )}
               </div>
             )}
