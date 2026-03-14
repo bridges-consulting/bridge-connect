@@ -57,7 +57,7 @@ const AppLayout = () => {
         <Routes>
           {/* ── Rotas compartilhadas (todos exceto admin) ── */}
           <Route path="/dashboard" element={
-            <RoleGuard allowed={["conector", "lider", "estrategista"]}>
+            <RoleGuard allowed={["conector", "lider", "estrategista", "admin"]}>
               <ConnectorDashboard />
             </RoleGuard>
           } />
