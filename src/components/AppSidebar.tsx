@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
   LayoutDashboard, Plus, Kanban, Users, DollarSign,
-  UserCircle, LogOut, Network, UsersRound,
+  LogOut, Network, UsersRound, UserCog,
 } from "lucide-react";
 
 // ─── Links por cargo ──────────────────────────────────────────────────────────
@@ -10,30 +10,31 @@ import {
 const LINKS = {
   admin: [
     { to: "/admin/pipeline",    label: "Pipeline",        icon: Kanban },
+    { to: "/dashboard",         label: "Dashboard",       icon: LayoutDashboard },
     { to: "/novo-lead",         label: "Novo Lead",       icon: Plus },
     { to: "/admin/conectores",  label: "Conectores",      icon: Users },
     { to: "/admin/comissoes",   label: "Comissões",       icon: DollarSign },
     { to: "/equipe",            label: "Minha Equipe",    icon: UsersRound },
     { to: "/lideres",           label: "Meus Líderes",    icon: Network },
-    { to: "/candidato",         label: "Área Candidato",  icon: UserCircle },
+    { to: "/perfil",            label: "Meu Perfil",      icon: UserCog },
   ],
   estrategista: [
     { to: "/dashboard",   label: "Dashboard",    icon: LayoutDashboard },
     { to: "/novo-lead",   label: "Novo Lead",    icon: Plus },
     { to: "/equipe",      label: "Minha Equipe", icon: UsersRound },
     { to: "/lideres",     label: "Meus Líderes", icon: Network },
-    { to: "/candidato",   label: "Área do Candidato", icon: UserCircle },
+    { to: "/perfil",      label: "Meu Perfil",   icon: UserCog },
   ],
   lider: [
     { to: "/dashboard",   label: "Dashboard",    icon: LayoutDashboard },
     { to: "/novo-lead",   label: "Novo Lead",    icon: Plus },
     { to: "/equipe",      label: "Minha Equipe", icon: UsersRound },
-    { to: "/candidato",   label: "Área do Candidato", icon: UserCircle },
+    { to: "/perfil",      label: "Meu Perfil",   icon: UserCog },
   ],
   conector: [
     { to: "/dashboard",   label: "Dashboard",    icon: LayoutDashboard },
     { to: "/novo-lead",   label: "Novo Lead",    icon: Plus },
-    { to: "/candidato",   label: "Área do Candidato", icon: UserCircle },
+    { to: "/perfil",      label: "Meu Perfil",   icon: UserCog },
   ],
 };
 
