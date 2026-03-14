@@ -1,79 +1,96 @@
-import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  LayoutDashboard,
-  Plus,
-  Kanban,
-  Users,
-  DollarSign,
-  UserCircle,
-  LogOut,
+  LayoutDashboard, Plus, Kanban, Users, DollarSign,
+  UserCircle, LogOut, Network, UsersRound,
 } from "lucide-react";
 
-const connectorLinks = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/novo-lead", label: "Novo Lead", icon: Plus },
-  { to: "/candidato", label: "Área Candidato", icon: UserCircle },
-];
+// ─── Links por cargo ──────────────────────────────────────────────────────────
 
-const adminLinks = [
-  { to: "/admin/pipeline", label: "Pipeline", icon: Kanban },
-  { to: "/novo-lead",      label: "Novo Lead", icon: Plus },
-  { to: "/admin/conectores", label: "Conectores", icon: Users },
-  { to: "/admin/comissoes",  label: "Comissões", icon: DollarSign },
-];
+const LINKS = {
+  admin: [
+    { to: "/admin/pipeline",    label: "Pipeline",     icon: Kanban },
+    { to: "/novo-lead",         label: "Novo Lead",    icon: Plus },
+    { to: "/admin/conectores",  label: "Conectores",   icon: Users },
+    { to: "/admin/comissoes",   label: "Comissões",    icon: DollarSign },
+  ],
+  estrategista: [
+    { to: "/dashboard",   label: "Dashboard",    icon: LayoutDashboard },
+    { to: "/novo-lead",   label: "Novo Lead",    icon: Plus },
+    { to: "/equipe",      label: "Minha Equipe", icon: UsersRound },
+    { to: "/lideres",     label: "Meus Líderes", icon: Network },
+    { to: "/candidato",   label: "Área do Candidato", icon: UserCircle },
+  ],
+  lider: [
+    { to: "/dashboard",   label: "Dashboard",    icon: LayoutDashboard },
+    { to: "/novo-lead",   label: "Novo Lead",    icon: Plus },
+    { to: "/equipe",      label: "Minha Equipe", icon: UsersRound },
+    { to: "/candidato",   label: "Área do Candidato", icon: UserCircle },
+  ],
+  conector: [
+    { to: "/dashboard",   label: "Dashboard",    icon: LayoutDashboard },
+    { to: "/novo-lead",   label: "Novo Lead",    icon: Plus },
+    { to: "/candidato",   label: "Área do Candidato", icon: UserCircle },
+  ],
+};
 
-interface AppSidebarProps {
-  role: "admin" | "conector";
-  onSignOut: () => void;
-}
+const ROLE_LABEL: Record<string, string> = {
+  admin:        "Administrador",
+  estrategista: "Estrategista de Rede",
+  lider:        "Líder de Conexão",
+  conector:     "Conector",
+};
 
-const AppSidebar = ({ role, onSignOut }: AppSidebarProps) => {
+// ─── Componente ───────────────────────────────────────────────────────────────
+
+const AppSidebar = ({ onSignOut }: { onSignOut: () => void }) => {
   const location = useLocation();
-  const { profile } = useAuth();
-  const links = role === "admin" ? adminLinks : connectorLinks;
+  const { profile, role } = useAuth();
+
+  const links = LINKS[role as keyof typeof LINKS] ?? LINKS.conector;
 
   return (
     <aside className="w-60 min-h-screen bg-background border-r border-border flex flex-col flex-shrink-0">
       {/* Logo */}
       <div className="p-6 border-b border-border">
-        <h1 className="text-lg font-bold text-foreground tracking-wide">
-          <span className="text-foreground/60">Programa</span> BRIDGES
-        </h1>
+        <p className="text-[9px] font-bold tracking-[3px] uppercase text-primary mb-0.5">Programa</p>
+        <h1 className="text-lg font-bold text-foreground tracking-wide">BRIDGES</h1>
       </div>
 
       {/* Nav */}
       <nav className="flex-1 py-4">
-        <ul className="space-y-1 px-3">
+        <ul className="space-y-0.5 px-3">
           {links.map((link) => {
             const isActive = location.pathname === link.to;
             return (
               <li key={link.to}>
-                <NavLink
+                <Link
                   to={link.to}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors ${
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors border-l-2 ${
                     isActive
-                      ? "text-foreground border-l-2 border-primary bg-surface"
-                      : "text-foreground/60 hover:text-foreground hover:bg-surface/50 border-l-2 border-transparent"
+                      ? "text-foreground border-primary bg-surface font-medium"
+                      : "text-foreground/55 hover:text-foreground hover:bg-surface/50 border-transparent"
                   }`}
-                  activeClassName=""
                 >
-                  <link.icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
+                  <link.icon className={`h-4 w-4 flex-shrink-0 ${isActive ? "text-primary" : ""}`} />
                   {link.label}
-                </NavLink>
+                </Link>
               </li>
             );
           })}
         </ul>
       </nav>
 
-      {/* Footer com perfil + logout */}
+      {/* Footer */}
       <div className="p-4 border-t border-border space-y-3">
         {profile && (
-          <div className="px-3 py-2 rounded-md bg-surface/50">
-            <p className="text-sm font-medium text-foreground truncate">{profile.nome || profile.email}</p>
-            <p className="text-xs text-primary capitalize">{profile.role}</p>
+          <div className="px-3 py-2.5 rounded-md bg-surface/50 border border-border/50">
+            <p className="text-sm font-medium text-foreground truncate">
+              {profile.nome || profile.email}
+            </p>
+            <p className="text-xs text-primary mt-0.5">
+              {ROLE_LABEL[role ?? "conector"] ?? role}
+            </p>
           </div>
         )}
         <button
