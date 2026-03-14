@@ -17,14 +17,12 @@ export function useAuth() {
   });
 
   useEffect(() => {
-    // Pega sessão inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
       setState((s) => ({ ...s, session }));
       if (session?.user) fetchProfile(session.user.id);
       else setState((s) => ({ ...s, loading: false }));
     });
 
-    // Escuta mudanças de auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setState((s) => ({ ...s, session }));
       if (session?.user) fetchProfile(session.user.id);
@@ -48,27 +46,24 @@ export function useAuth() {
     return { error };
   }
 
-  async function signUp(email: string, password: string, nome: string, role: "admin" | "conector" = "conector") {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { nome, role } },
-    });
-    return { error };
-  }
-
   async function signOut() {
     await supabase.auth.signOut();
   }
 
+  const role = state.profile?.role ?? null;
+
   return {
-    session: state.session,
-    profile: state.profile,
-    loading: state.loading,
-    isAdmin: state.profile?.role === "admin",
-    isConector: state.profile?.role === "conector",
+    session:        state.session,
+    profile:        state.profile,
+    loading:        state.loading,
+    role,
+    isAdmin:        role === "admin",
+    isEstratégista: role === "estrategista",
+    isLider:        role === "lider",
+    isConector:     role === "conector",
+    // qualquer cargo não-admin pode indicar leads
+    podeIndicar:    role !== null && role !== "admin",
     signIn,
-    signUp,
     signOut,
   };
 }
