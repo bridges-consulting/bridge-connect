@@ -9,10 +9,13 @@ import {
 
 const LINKS = {
   admin: [
-    { to: "/admin/pipeline",    label: "Pipeline",     icon: Kanban },
-    { to: "/novo-lead",         label: "Novo Lead",    icon: Plus },
-    { to: "/admin/conectores",  label: "Conectores",   icon: Users },
-    { to: "/admin/comissoes",   label: "Comissões",    icon: DollarSign },
+    { to: "/admin/pipeline",    label: "Pipeline",        icon: Kanban },
+    { to: "/novo-lead",         label: "Novo Lead",       icon: Plus },
+    { to: "/admin/conectores",  label: "Conectores",      icon: Users },
+    { to: "/admin/comissoes",   label: "Comissões",       icon: DollarSign },
+    { to: "/equipe",            label: "Minha Equipe",    icon: UsersRound },
+    { to: "/lideres",           label: "Meus Líderes",    icon: Network },
+    { to: "/candidato",         label: "Área Candidato",  icon: UserCircle },
   ],
   estrategista: [
     { to: "/dashboard",   label: "Dashboard",    icon: LayoutDashboard },
