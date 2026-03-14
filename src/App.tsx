@@ -11,7 +11,7 @@ import RegisterConector from "./pages/RegisterConector";
 import AdminPipeline from "./pages/AdminPipeline";
 import AdminConnectors from "./pages/AdminConnectors";
 import AdminCommissions from "./pages/AdminCommissions";
-import CandidateArea from "./pages/CandidateArea";
+import PerfilConector from "./pages/PerfilConector";
 import MinhaEquipe from "./pages/MinhaEquipe";
 import MeusLideres from "./pages/MeusLideres";
 import NotFound from "./pages/NotFound";
@@ -62,7 +62,7 @@ const AppLayout = () => {
             </RoleGuard>
           } />
           <Route path="/novo-lead" element={<NewLead />} />
-          <Route path="/candidato" element={<CandidateArea />} />
+          <Route path="/perfil" element={<PerfilConector />} />
 
           {/* ── Líder + Estrategista ── */}
           <Route path="/equipe" element={
