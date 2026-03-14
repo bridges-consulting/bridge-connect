@@ -150,7 +150,10 @@ function TabProducao({ profileId }: { profileId: string }) {
         }
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-3">
+        <Button variant="outline" onClick={() => navigate("/meus-leads")} className="gap-2 text-foreground/60 hover:text-foreground text-sm">
+          Ver todos os leads
+        </Button>
         <Button variant="gold" onClick={() => navigate("/novo-lead")} className="gap-2">
           <Plus className="h-4 w-4"/> Novo Lead
         </Button>
