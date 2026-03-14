@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
   LayoutDashboard, Plus, Kanban, Users, DollarSign,
-  LogOut, Network, UsersRound, GraduationCap, ChevronRight,
+  LogOut, Network, UsersRound, GraduationCap, ChevronRight, List,
 } from "lucide-react";
 
 // ─── Links por cargo ──────────────────────────────────────────────────────────
@@ -12,6 +12,7 @@ const LINKS = {
     { to: "/admin/pipeline",   label: "Pipeline",      icon: Kanban },
     { to: "/dashboard",        label: "Dashboard",     icon: LayoutDashboard },
     { to: "/novo-lead",        label: "Novo Lead",     icon: Plus },
+    { to: "/admin/leads",      label: "Leads",         icon: List },
     { to: "/admin/conectores", label: "Conectores",    icon: Users },
     { to: "/admin/comissoes",  label: "Comissões",     icon: DollarSign },
     { to: "/equipe",           label: "Minha Equipe",  icon: UsersRound },
