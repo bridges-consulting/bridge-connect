@@ -13,6 +13,8 @@ import AdminConnectors from "./pages/AdminConnectors";
 import AdminCommissions from "./pages/AdminCommissions";
 import PerfilConector from "./pages/PerfilConector";
 import Academy from "./pages/Academy";
+import MeusLeads from "./pages/MeusLeads";
+import AdminLeads from "./pages/AdminLeads";
 import MinhaEquipe from "./pages/MinhaEquipe";
 import MeusLideres from "./pages/MeusLideres";
 import NotFound from "./pages/NotFound";
@@ -63,8 +65,14 @@ const AppLayout = () => {
             </RoleGuard>
           } />
           <Route path="/novo-lead" element={<NewLead />} />
-          <Route path="/perfil"  element={<PerfilConector />} />
-          <Route path="/academy" element={<Academy />} />
+          <Route path="/perfil"     element={<PerfilConector />} />
+          <Route path="/academy"    element={<Academy />} />
+          <Route path="/meus-leads" element={<MeusLeads />} />
+          <Route path="/admin/leads" element={
+            <RoleGuard allowed={["admin"]}>
+              <AdminLeads />
+            </RoleGuard>
+          } />
 
           {/* ── Líder + Estrategista ── */}
           <Route path="/equipe" element={
