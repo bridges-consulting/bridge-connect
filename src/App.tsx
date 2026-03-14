@@ -12,11 +12,31 @@ import AdminPipeline from "./pages/AdminPipeline";
 import AdminConnectors from "./pages/AdminConnectors";
 import AdminCommissions from "./pages/AdminCommissions";
 import CandidateArea from "./pages/CandidateArea";
+import MinhaEquipe from "./pages/MinhaEquipe";
+import MeusLideres from "./pages/MeusLideres";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "@/hooks/useAuth";
 
 const queryClient = new QueryClient();
 
+// ─── Redireciona para home correta por cargo ──────────────────────────────────
+function HomeRedirect() {
+  const { role } = useAuth();
+  if (role === "admin") return <Navigate to="/admin/pipeline" replace />;
+  return <Navigate to="/dashboard" replace />;
+}
+
+// ─── Guard de rota por cargo ──────────────────────────────────────────────────
+function RoleGuard({
+  children, allowed,
+}: { children: React.ReactNode; allowed: string[] }) {
+  const { role } = useAuth();
+  if (!role) return null;
+  if (!allowed.includes(role)) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
+// ─── Layout autenticado ───────────────────────────────────────────────────────
 const AppLayout = () => {
   const { profile, loading, signOut } = useAuth();
 
@@ -28,41 +48,55 @@ const AppLayout = () => {
     );
   }
 
-  if (!profile) {
-    return <Navigate to="/login" replace />;
-  }
-
-  const role = profile.role;
+  if (!profile) return <Navigate to="/login" replace />;
 
   return (
     <div className="min-h-screen flex w-full">
-      <AppSidebar role={role} onSignOut={signOut} />
+      <AppSidebar onSignOut={signOut} />
       <main className="flex-1 overflow-auto">
         <Routes>
-          {/* Rotas do conector */}
-          <Route path="/dashboard" element={<ConnectorDashboard />} />
+          {/* ── Rotas compartilhadas (todos exceto admin) ── */}
+          <Route path="/dashboard" element={
+            <RoleGuard allowed={["conector", "lider", "estrategista"]}>
+              <ConnectorDashboard />
+            </RoleGuard>
+          } />
           <Route path="/novo-lead" element={<NewLead />} />
           <Route path="/candidato" element={<CandidateArea />} />
 
-          {/* Rotas do admin */}
-          <Route
-            path="/admin/pipeline"
-            element={role === "admin" ? <AdminPipeline /> : <Navigate to="/dashboard" replace />}
-          />
-          <Route
-            path="/admin/conectores"
-            element={role === "admin" ? <AdminConnectors /> : <Navigate to="/dashboard" replace />}
-          />
-          <Route
-            path="/admin/comissoes"
-            element={role === "admin" ? <AdminCommissions /> : <Navigate to="/dashboard" replace />}
-          />
+          {/* ── Líder + Estrategista ── */}
+          <Route path="/equipe" element={
+            <RoleGuard allowed={["lider", "estrategista"]}>
+              <MinhaEquipe />
+            </RoleGuard>
+          } />
 
-          {/* Redirect raiz por role */}
-          <Route
-            path="/"
-            element={<Navigate to={role === "admin" ? "/admin/pipeline" : "/dashboard"} replace />}
-          />
+          {/* ── Estrategista only ── */}
+          <Route path="/lideres" element={
+            <RoleGuard allowed={["estrategista"]}>
+              <MeusLideres />
+            </RoleGuard>
+          } />
+
+          {/* ── Admin only ── */}
+          <Route path="/admin/pipeline" element={
+            <RoleGuard allowed={["admin"]}>
+              <AdminPipeline />
+            </RoleGuard>
+          } />
+          <Route path="/admin/conectores" element={
+            <RoleGuard allowed={["admin"]}>
+              <AdminConnectors />
+            </RoleGuard>
+          } />
+          <Route path="/admin/comissoes" element={
+            <RoleGuard allowed={["admin"]}>
+              <AdminCommissions />
+            </RoleGuard>
+          } />
+
+          {/* ── Home e 404 ── */}
+          <Route path="/" element={<HomeRedirect />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
@@ -77,9 +111,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/login" element={<Login />} />
+          <Route path="/login"    element={<Login />} />
           <Route path="/cadastro" element={<RegisterConector />} />
-          <Route path="/*" element={<AppLayout />} />
+          <Route path="/*"        element={<AppLayout />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
