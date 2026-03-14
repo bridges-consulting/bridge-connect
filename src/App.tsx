@@ -15,6 +15,7 @@ import PerfilConector from "./pages/PerfilConector";
 import Academy from "./pages/Academy";
 import MeusLeads from "./pages/MeusLeads";
 import AdminLeads from "./pages/AdminLeads";
+import LeadBriefing from "./pages/LeadBriefing";
 import MinhaEquipe from "./pages/MinhaEquipe";
 import MeusLideres from "./pages/MeusLideres";
 import NotFound from "./pages/NotFound";
@@ -68,6 +69,7 @@ const AppLayout = () => {
           <Route path="/perfil"     element={<PerfilConector />} />
           <Route path="/academy"    element={<Academy />} />
           <Route path="/meus-leads" element={<MeusLeads />} />
+          <Route path="/leads/:id"  element={<LeadBriefing />} />
           <Route path="/admin/leads" element={
             <RoleGuard allowed={["admin"]}>
               <AdminLeads />
