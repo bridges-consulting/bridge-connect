@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, Plus, Search, Filter, ArrowLeft } from "lucide-react";
+import { Loader2, Plus, Search, Filter, ArrowLeft, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -191,7 +191,10 @@ const MeusLeads = () => {
                   <td className="p-4 text-xs text-foreground/50">{l.cidade ?? "—"}</td>
                   <td className="p-4 text-xs text-foreground/40">{fmtDate(l.created_at)}</td>
                   <td className="p-4 text-right">
-                    <span className="text-xs text-foreground/25">{l.whatsapp ?? ""}</span>
+                    <button onClick={() => navigate(`/leads/${l.id}`)}
+                      className="text-xs text-primary/60 hover:text-primary transition-colors font-medium">
+                      Ver briefing →
+                    </button>
                   </td>
                 </tr>
               ))}

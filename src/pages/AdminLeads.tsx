@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -96,6 +97,7 @@ function DeleteModal({ lead, onConfirm, onCancel, loading }: {
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 const AdminLeads = () => {
+  const navigate = useNavigate();
   const [leads, setLeads]         = useState<Lead[]>([]);
   const [loading, setLoading]     = useState(true);
   const [total, setTotal]         = useState(0);
@@ -296,6 +298,10 @@ const AdminLeads = () => {
                     <td className="p-4 text-xs text-foreground/40">{fmtDate(l.created_at)}</td>
                     <td className="p-4">
                       <div className="flex items-center gap-1.5 justify-end">
+                        <button onClick={() => navigate(`/leads/${l.id}`)}
+                          className="text-xs text-primary/60 hover:text-primary transition-colors font-medium px-2">
+                          Briefing →
+                        </button>
                         {l.arquivado && (
                           <Button variant="ghost" size="sm" onClick={() => handleUnarchive(l)}
                             disabled={unarchiving === l.id}
