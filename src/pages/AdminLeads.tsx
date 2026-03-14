@@ -13,13 +13,13 @@ const fmtDate = (d: string) =>
   new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
 
 const STATUS_CLS: Record<string, string> = {
-  "Novo Lead":         "bg-primary/20 text-primary border-primary/30",
-  "Qualificado":       "bg-blue-500/20 text-blue-300 border-blue-500/30",
-  "Reunião Agendada":  "bg-purple-500/20 text-purple-300 border-purple-500/30",
-  "Proposta Enviada":  "bg-orange-500/20 text-orange-300 border-orange-500/30",
-  "Contrato Assinado": "bg-green-500/20 text-green-300 border-green-500/30",
-  "Em Processo":       "bg-cyan-500/20 text-cyan-300 border-cyan-500/30",
-  "Concluído":         "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+  "Lead Indicado":    "bg-primary/20 text-primary border-primary/30",
+  "Em Qualificação":  "bg-blue-500/20 text-blue-300 border-blue-500/30",
+  "Lead Disponível":  "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
+  "Reunião Agendada": "bg-purple-500/20 text-purple-300 border-purple-500/30",
+  "Proposta Enviada": "bg-orange-500/20 text-orange-300 border-orange-500/30",
+  "Contrato Assinado":"bg-green-500/20 text-green-300 border-green-500/30",
+  "Entrada Paga":     "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
 };
 
 const NIVEL_CLS: Record<string, string> = {
@@ -29,8 +29,8 @@ const NIVEL_CLS: Record<string, string> = {
 };
 
 const PIPELINE_STAGES = [
-  "Novo Lead", "Qualificado", "Reunião Agendada",
-  "Proposta Enviada", "Contrato Assinado", "Em Processo", "Concluído",
+  "Lead Indicado", "Em Qualificação", "Lead Disponível", "Reunião Agendada",
+  "Proposta Enviada", "Contrato Assinado", "Entrada Paga",
 ];
 
 interface Lead {
@@ -38,6 +38,7 @@ interface Lead {
   visto: string | null; status_pipeline: string; nivel_elegibilidade: string | null;
   cidade: string | null; created_at: string; arquivado: boolean;
   motivo_exclusao: string | null; arquivado_at: string | null;
+  passou_por_disponivel: boolean; cenario_comissao: number | null;
   conector: { nome: string | null; email: string | null } | null;
 }
 
@@ -117,6 +118,7 @@ const AdminLeads = () => {
         id, nome, email, whatsapp, visto, status_pipeline,
         nivel_elegibilidade, cidade, created_at, arquivado,
         motivo_exclusao, arquivado_at,
+        passou_por_disponivel, cenario_comissao,
         conector:conector_id(nome, email)
       `, { count: "exact" })
       .order("created_at", { ascending: false })
@@ -265,6 +267,18 @@ const AdminLeads = () => {
                     </td>
                     <td className="p-4">
                       <p className="text-xs text-foreground/60">{l.conector?.nome ?? l.conector?.email ?? "—"}</p>
+                      {l.cenario_comissao && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded mt-1 inline-block ${
+                          l.cenario_comissao === 1
+                            ? "bg-primary/10 text-primary/70"
+                            : "bg-blue-500/10 text-blue-400"
+                        }`}>
+                          Cen. {l.cenario_comissao === 1 ? "1 — Indicação" : "3 — Venda direta"}
+                        </span>
+                      )}
+                      {l.passou_por_disponivel && !l.cenario_comissao && (
+                        <span className="text-[10px] text-yellow-400/60 mt-1 block">↗ Passou p/ líder</span>
+                      )}
                     </td>
                     <td className="p-4 text-xs text-foreground/60">{l.visto?.toUpperCase() ?? "—"}</td>
                     <td className="p-4">

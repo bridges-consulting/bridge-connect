@@ -25,13 +25,13 @@ const timeAgo = (d: string) => {
 };
 
 const STATUS_CLS: Record<string, string> = {
-  "Novo Lead":         "bg-primary/20 text-primary border-primary/30",
-  "Qualificado":       "bg-blue-500/20 text-blue-300 border-blue-500/30",
-  "Reunião Agendada":  "bg-purple-500/20 text-purple-300 border-purple-500/30",
-  "Proposta Enviada":  "bg-orange-500/20 text-orange-300 border-orange-500/30",
-  "Contrato Assinado": "bg-green-500/20 text-green-300 border-green-500/30",
-  "Em Processo":       "bg-cyan-500/20 text-cyan-300 border-cyan-500/30",
-  "Concluído":         "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+  "Lead Indicado":    "bg-primary/20 text-primary border-primary/30",
+  "Em Qualificação":  "bg-blue-500/20 text-blue-300 border-blue-500/30",
+  "Lead Disponível":  "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
+  "Reunião Agendada": "bg-purple-500/20 text-purple-300 border-purple-500/30",
+  "Proposta Enviada": "bg-orange-500/20 text-orange-300 border-orange-500/30",
+  "Contrato Assinado":"bg-green-500/20 text-green-300 border-green-500/30",
+  "Entrada Paga":     "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
 };
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -109,8 +109,8 @@ function TabProducao({ profileId }: { profileId: string }) {
     fetch();
   }, [profileId]);
 
-  const convertidos = leads.filter(l => ["Contrato Assinado","Em Processo","Concluído"].includes(l.status_pipeline)).length;
-  const emProcesso  = leads.filter(l => !["Concluído","Novo Lead"].includes(l.status_pipeline)).length;
+  const convertidos = leads.filter(l => ["Contrato Assinado","Entrada Paga"].includes(l.status_pipeline)).length;
+  const emAndamento = leads.filter(l => !["Entrada Paga","Lead Indicado"].includes(l.status_pipeline)).length;
 
   if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-5 w-5 animate-spin text-primary"/></div>;
 
@@ -118,7 +118,7 @@ function TabProducao({ profileId }: { profileId: string }) {
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard label="Leads Indicados"   value={String(leads.length)} icon={Users} />
-        <KpiCard label="Em Processo"       value={String(emProcesso)}   icon={Clock} />
+        <KpiCard label="Em Andamento"      value={String(emAndamento)}  icon={Clock} />
         <KpiCard label="Convertidos"       value={String(convertidos)}  icon={TrendingUp} />
         <KpiCard label="Comissão Recebida" value={fmtCurrency(comissaoRecebida)}
           sub={comissaoPrevista > 0 ? `${fmtCurrency(comissaoPrevista)} previsto` : undefined}
@@ -194,7 +194,7 @@ function TabEquipe({ profileId }: { profileId: string }) {
           .select("valor_pago, valor_previsto").eq("conector_id", p.id);
         const total_leads = leads?.length ?? 0;
         const convertidos = (leads ?? []).filter((l: any) =>
-          ["Contrato Assinado","Em Processo","Concluído"].includes(l.status_pipeline)).length;
+          ["Contrato Assinado","Entrada Paga"].includes(l.status_pipeline)).length;
         const comissao_gerada = (comissoes ?? []).reduce((s: number, c: any) => s + (c.valor_pago ?? 0) + (c.valor_previsto ?? 0), 0);
         return { id: p.id, nome: p.nome, email: p.email, total_leads, convertidos, comissao_gerada };
       }));

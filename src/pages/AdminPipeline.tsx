@@ -16,28 +16,30 @@ interface PipelineLead {
   visto: string | null;
   nivel_elegibilidade: string | null;
   created_at: string;
+  cenario_comissao: number | null;
+  passou_por_disponivel: boolean;
 }
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
 const COLUMNS = [
-  "Novo Lead",
-  "Qualificado",
+  "Lead Indicado",
+  "Em Qualificação",
+  "Lead Disponível",
   "Reunião Agendada",
   "Proposta Enviada",
   "Contrato Assinado",
-  "Em Processo",
-  "Concluído",
+  "Entrada Paga",
 ];
 
 const COL_COLOR: Record<string, string> = {
-  "Novo Lead":         "border-t-primary",
-  "Qualificado":       "border-t-blue-400",
-  "Reunião Agendada":  "border-t-purple-400",
-  "Proposta Enviada":  "border-t-orange-400",
-  "Contrato Assinado": "border-t-green-400",
-  "Em Processo":       "border-t-cyan-400",
-  "Concluído":         "border-t-emerald-400",
+  "Lead Indicado":    "border-t-primary",
+  "Em Qualificação":  "border-t-blue-400",
+  "Lead Disponível":  "border-t-yellow-400",
+  "Reunião Agendada": "border-t-purple-400",
+  "Proposta Enviada": "border-t-orange-400",
+  "Contrato Assinado":"border-t-green-400",
+  "Entrada Paga":     "border-t-emerald-400",
 };
 
 const NIVEL_CLASS: Record<string, string> = {
@@ -159,9 +161,11 @@ const AdminPipeline = () => {
         nivel_elegibilidade,
         status_pipeline,
         created_at,
+        cenario_comissao,
+        passou_por_disponivel,
         profiles:conector_id ( nome, email )
       `)
-      .eq("arquivado", false)           // ← só leads ativos
+      .eq("arquivado", false)
       .order("created_at", { ascending: true });
 
     if (error) {
@@ -172,16 +176,18 @@ const AdminPipeline = () => {
 
     const board = emptyBoard();
     (leads ?? []).forEach((lead) => {
-      const col = lead.status_pipeline ?? "Novo Lead";
+      const col = lead.status_pipeline ?? "Lead Indicado";
       if (board[col]) {
         const p = lead.profiles as { nome: string | null; email: string | null } | null;
         board[col].push({
-          id:                lead.id,
-          nome:              lead.nome,
-          conector:          p?.nome ?? p?.email ?? "—",
-          visto:             lead.visto,
-          nivel_elegibilidade: lead.nivel_elegibilidade,
-          created_at:        lead.created_at,
+          id:                    lead.id,
+          nome:                  lead.nome,
+          conector:              p?.nome ?? p?.email ?? "—",
+          visto:                 lead.visto,
+          nivel_elegibilidade:   lead.nivel_elegibilidade,
+          created_at:            lead.created_at,
+          cenario_comissao:      (lead as any).cenario_comissao ?? null,
+          passou_por_disponivel: (lead as any).passou_por_disponivel ?? false,
         });
       }
     });
@@ -221,13 +227,13 @@ const AdminPipeline = () => {
 
     if (source.droppableId !== destination.droppableId) {
       setMovingId(draggableId);
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("leads")
         .update({ status_pipeline: destination.droppableId })
         .eq("id", draggableId);
 
       if (!error) {
-        await (supabase as any).from("pipeline_stages").insert({
+        await supabase.from("pipeline_stages").insert({
           lead_id:  draggableId,
           stage:    destination.droppableId,
           moved_by: profile?.id ?? null,
@@ -250,7 +256,7 @@ const AdminPipeline = () => {
     if (!archiveTarget) return;
     setArchiving(true);
 
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("leads")
       .update({
         arquivado:       true,
@@ -280,8 +286,8 @@ const AdminPipeline = () => {
   const totalLeads = Object.values(data).reduce((sum, col) => sum + col.length, 0);
   const totalConvertidos =
     (data["Contrato Assinado"]?.length ?? 0) +
-    (data["Em Processo"]?.length ?? 0) +
-    (data["Concluído"]?.length ?? 0);
+    (data["Contrato Assinado"]?.length ?? 0) +
+    (data["Entrada Paga"]?.length ?? 0);
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -345,8 +351,13 @@ const AdminPipeline = () => {
                 >
                   {/* Coluna header */}
                   <div className="p-3 border-b border-border flex items-center justify-between">
-                    <span className="text-sm font-semibold text-foreground">{col}</span>
-                    <Badge variant="outline" className="text-xs text-foreground/60 border-border">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-sm font-semibold text-foreground truncate">{col}</span>
+                      {col === "Lead Disponível" && (
+                        <span className="text-[9px] font-bold tracking-wider text-yellow-400/70 uppercase flex-shrink-0">bifurcação</span>
+                      )}
+                    </div>
+                    <Badge variant="outline" className="text-xs text-foreground/60 border-border flex-shrink-0">
                       {data[col]?.length || 0}
                     </Badge>
                   </div>
@@ -374,8 +385,11 @@ const AdminPipeline = () => {
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
-                                className={`group rounded-md border border-border bg-surface p-3 cursor-grab active:cursor-grabbing hover:border-primary/40 transition-colors ${
-                                  snapshot.isDragging ? "shadow-lg border-primary/50 opacity-90" : ""
+                                className={`group rounded-md border bg-surface p-3 cursor-grab active:cursor-grabbing transition-colors ${
+                                  col === "Lead Disponível"
+                                    ? "border-yellow-400/40 hover:border-yellow-400/70"
+                                    : "border-border hover:border-primary/40"
+                                } ${snapshot.isDragging ? "shadow-lg opacity-90" : ""
                                 } ${movingId === lead.id ? "opacity-50" : ""}`}
                               >
                                 <div className="flex items-start gap-2">
@@ -398,6 +412,16 @@ const AdminPipeline = () => {
                                       {lead.conector}
                                     </p>
                                     <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                                      {col === "Lead Disponível" && (
+                                        <Badge variant="outline" className="text-xs bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
+                                          Disponível p/ líder
+                                        </Badge>
+                                      )}
+                                      {lead.cenario_comissao && (
+                                        <Badge variant="outline" className="text-xs bg-surface text-foreground/50 border-border">
+                                          C{lead.cenario_comissao}
+                                        </Badge>
+                                      )}
                                       {lead.visto && (
                                         <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">
                                           {lead.visto}
