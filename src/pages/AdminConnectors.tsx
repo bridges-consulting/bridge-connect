@@ -54,16 +54,18 @@ const STATUS_CAND: Record<CandStatus, { label: string; cls: string }> = {
   rejeitado:     { label: "Rejeitado",     cls: "bg-red-500/20 text-red-300 border-red-500/30" },
 };
 
-const ROLE_LABEL: Record<Role, string> = {
+const ROLE_LABEL: Record<string, string> = {
   conector:     "Conector",
   lider:        "Líder de Conexão",
   estrategista: "Estrategista de Rede",
+  admin:        "Administrador",
 };
 
-const ROLE_CLS: Record<Role, string> = {
+const ROLE_CLS: Record<string, string> = {
   conector:     "bg-primary/10 text-primary border-primary/30",
   lider:        "bg-blue-500/20 text-blue-300 border-blue-500/30",
   estrategista: "bg-purple-500/20 text-purple-300 border-purple-500/30",
+  admin:        "bg-red-500/20 text-red-300 border-red-500/30",
 };
 
 // ─── Modal de credenciais ─────────────────────────────────────────────────────
@@ -374,7 +376,11 @@ const AdminConnectors = () => {
   useEffect(() => {
     if (tab === "conectores") fetchConectores();
     else if (tab === "candidaturas") fetchCandidaturas();
-    else fetchEquipes();
+    else {
+      // Equipes precisa dos profiles para o modal de criar/editar
+      fetchEquipes();
+      if (conectores.length === 0) fetchConectores();
+    }
   }, [tab]);
 
   // ── Toggle ativo/inativo ───────────────────────────────────────────────────
@@ -579,10 +585,13 @@ const AdminConnectors = () => {
                           </td>
                           <td className="p-4">
                             <div className="flex items-center gap-1">
-                              <Button variant="ghost" size="sm" onClick={()=>setPromoteTarget(c)}
-                                className="text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 text-xs gap-1">
-                                <Shield className="h-3.5 w-3.5"/>Cargo
-                              </Button>
+                              {/* Não mostra opção de alterar cargo para admin */}
+                              {c.role !== "admin" && (
+                                <Button variant="ghost" size="sm" onClick={()=>setPromoteTarget(c)}
+                                  className="text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 text-xs gap-1">
+                                  <Shield className="h-3.5 w-3.5"/>Cargo
+                                </Button>
+                              )}
                               <Button variant="ghost" size="sm" onClick={()=>toggleStatus(c)} disabled={togglingId===c.id}
                                 className={`text-xs ${c.status==="ativo"?"text-red-400 hover:text-red-300 hover:bg-red-500/10":"text-green-400 hover:text-green-300 hover:bg-green-500/10"}`}>
                                 {togglingId===c.id?"...":(c.status==="ativo"?<><UserX className="h-3.5 w-3.5 mr-1"/>Off</>:<><UserCheck className="h-3.5 w-3.5 mr-1"/>On</>)}
