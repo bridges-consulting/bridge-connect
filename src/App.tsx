@@ -66,14 +66,14 @@ const AppLayout = () => {
 
           {/* ── Líder + Estrategista ── */}
           <Route path="/equipe" element={
-            <RoleGuard allowed={["lider", "estrategista"]}>
+            <RoleGuard allowed={["lider", "estrategista", "admin"]}>
               <MinhaEquipe />
             </RoleGuard>
           } />
 
           {/* ── Estrategista only ── */}
           <Route path="/lideres" element={
-            <RoleGuard allowed={["estrategista"]}>
+            <RoleGuard allowed={["estrategista", "admin"]}>
               <MeusLideres />
             </RoleGuard>
           } />
