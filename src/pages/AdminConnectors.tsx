@@ -243,7 +243,7 @@ function BuscaConector({ candidaturaId, indicadoPorNome, indicadoPorProfileId, o
     timeoutRef.current = setTimeout(async () => {
       setBuscando(true);
       const { data } = await supabase.from("profiles")
-        .select("id, nome, email").neq("role", "admin")
+        .select("id, nome, email")
         .or(`nome.ilike.%${texto}%,email.ilike.%${texto}%`).limit(8);
       setResultados(data ?? []);
       setBuscando(false);
