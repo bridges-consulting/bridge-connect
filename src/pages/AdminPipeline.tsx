@@ -286,7 +286,6 @@ const AdminPipeline = () => {
   const totalLeads = Object.values(data).reduce((sum, col) => sum + col.length, 0);
   const totalConvertidos =
     (data["Contrato Assinado"]?.length ?? 0) +
-    (data["Contrato Assinado"]?.length ?? 0) +
     (data["Entrada Paga"]?.length ?? 0);
 
   // ── Render ─────────────────────────────────────────────────────────────────
