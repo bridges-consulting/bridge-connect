@@ -395,7 +395,11 @@ const AdminPipeline = () => {
                                   <GripVertical className="h-4 w-4 text-foreground/30 mt-0.5 flex-shrink-0" />
                                   <div className="min-w-0 flex-1">
                                     <div className="flex items-start justify-between gap-1">
-                                      <p className="text-sm font-medium text-foreground truncate leading-snug">
+                                      <p
+                                        onClick={(e) => { e.stopPropagation(); navigate(`/leads/${lead.id}`); }}
+                                        className="text-sm font-medium text-foreground truncate leading-snug hover:text-primary transition-colors cursor-pointer"
+                                        title="Ver briefing"
+                                      >
                                         {lead.nome}
                                       </p>
                                       {/* Botão arquivar */}

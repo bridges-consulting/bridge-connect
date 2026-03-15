@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Save, User, Briefcase, CreditCard, Users, CheckCircle, Link2, Copy, Check } from "lucide-react";
+import { Loader2, Save, User, Briefcase, CreditCard, Users, CheckCircle, Link2, Copy, Check, Shield, Lock } from "lucide-react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -107,6 +107,96 @@ function LinkIndicacao({ profile }: { profile: { referral_code?: string | null; 
       <p className="text-[10px] text-foreground/30">
         Código: <span className="font-mono tracking-widest text-primary/60">{profile.referral_code}</span>
       </p>
+    </div>
+  );
+}
+
+// ─── Alterar senha ────────────────────────────────────────────────────────────
+
+function AlterarSenha() {
+  const [nova, setNova]         = useState("");
+  const [confirma, setConfirma] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const [msg, setMsg]           = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
+
+  const forca = nova.length === 0 ? 0
+    : nova.length < 6 ? 1
+    : nova.length < 10 && !/[^a-zA-Z0-9]/.test(nova) ? 2
+    : nova.length >= 10 && /[^a-zA-Z0-9]/.test(nova) ? 4
+    : 3;
+
+  const FORCA_CLS = ["", "bg-red-500", "bg-yellow-500", "bg-blue-400", "bg-green-500"];
+  const FORCA_LABEL = ["", "Fraca", "Regular", "Boa", "Forte"];
+
+  const handleSalvar = async () => {
+    if (!nova || nova !== confirma) {
+      setMsg({ tipo: "erro", texto: "As senhas não coincidem." });
+      return;
+    }
+    if (nova.length < 6) {
+      setMsg({ tipo: "erro", texto: "A senha deve ter pelo menos 6 caracteres." });
+      return;
+    }
+    setSalvando(true);
+    setMsg(null);
+    const { error } = await supabase.auth.updateUser({ password: nova });
+    if (error) {
+      setMsg({ tipo: "erro", texto: "Erro ao alterar a senha. Tente novamente." });
+    } else {
+      setMsg({ tipo: "ok", texto: "Senha alterada com sucesso!" });
+      setNova(""); setConfirma("");
+    }
+    setSalvando(false);
+  };
+
+  const inputCls = "w-full bg-white/[0.05] border border-white/10 rounded-lg px-4 py-2.5 text-sm text-foreground placeholder:text-foreground/25 focus:outline-none focus:border-primary/60 transition-all";
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-6 space-y-5">
+      <div className="flex items-center gap-2.5 pb-1 border-b border-border">
+        <Shield className="h-4 w-4 text-primary"/>
+        <h2 className="text-sm font-semibold text-foreground tracking-wide">Segurança</h2>
+      </div>
+
+      <div className="space-y-4 max-w-sm">
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold tracking-widest uppercase text-primary/70">Nova senha</label>
+          <input type="password" value={nova} onChange={e => { setNova(e.target.value); setMsg(null); }}
+            placeholder="••••••••" className={inputCls}/>
+          {nova.length > 0 && (
+            <div className="flex items-center gap-2 mt-1.5">
+              <div className="flex gap-1 flex-1">
+                {[1,2,3,4].map(i => (
+                  <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${i <= forca ? FORCA_CLS[forca] : "bg-white/10"}`}/>
+                ))}
+              </div>
+              <span className="text-xs text-foreground/40">{FORCA_LABEL[forca]}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold tracking-widest uppercase text-primary/70">Confirmar nova senha</label>
+          <input type="password" value={confirma} onChange={e => { setConfirma(e.target.value); setMsg(null); }}
+            placeholder="••••••••" className={inputCls}/>
+          {confirma && nova !== confirma && (
+            <p className="text-xs text-red-400 mt-1">As senhas não coincidem.</p>
+          )}
+        </div>
+
+        {msg && (
+          <div className={`rounded-lg px-4 py-2.5 text-sm ${msg.tipo === "ok" ? "bg-green-500/10 border border-green-500/20 text-green-400" : "bg-red-500/10 border border-red-500/20 text-red-400"}`}>
+            {msg.texto}
+          </div>
+        )}
+
+        <Button variant="gold" onClick={handleSalvar}
+          disabled={salvando || !nova || nova !== confirma}
+          className="gap-2 w-full">
+          {salvando ? <Loader2 className="h-4 w-4 animate-spin"/> : <Lock className="h-4 w-4"/>}
+          {salvando ? "Salvando..." : "Alterar senha"}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -403,6 +493,9 @@ const PerfilConector = () => {
 
       {/* Seção link de indicação */}
       <LinkIndicacao profile={profile} />
+
+      {/* Seção alterar senha */}
+      <AlterarSenha />
 
       {/* Botão salvar inferior */}
       <div className="flex justify-end pb-4">

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, Plus, Search, Filter, ArrowLeft, FileText } from "lucide-react";
@@ -46,32 +46,46 @@ const PAGE_SIZE = 20;
 const MeusLeads = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const [params] = useSearchParams();
+  const conectorParam = params.get("conector"); // ID do conector (passado pelo líder)
 
+  const [nomeConectorExterno, setNomeConectorExterno] = useState<string | null>(null);
   const [leads, setLeads]     = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal]     = useState(0);
   const [page, setPage]       = useState(0);
 
   // Filtros
-  const [busca, setBusca]         = useState("");
+  const [busca, setBusca]               = useState("");
   const [filtroStatus, setFiltroStatus] = useState<string>("ativos");
   const [filtroPipeline, setFiltroPipeline] = useState<string>("");
+
+  // Busca o nome do conector externo se vier da URL
+  useEffect(() => {
+    if (!conectorParam) { setNomeConectorExterno(null); return; }
+    supabase.from("profiles").select("nome, email")
+      .eq("id", conectorParam).single()
+      .then(({ data }) => setNomeConectorExterno(data?.nome ?? data?.email ?? "Conector"));
+  }, [conectorParam]);
 
   const fetchLeads = async (p = 0) => {
     if (!profile?.id) return;
     setLoading(true);
 
+    // Se vier ?conector=ID, usa esse ID (líder vendo leads de um membro)
+    const alvoId = conectorParam ?? profile.id;
+
     let query = supabase
       .from("leads")
       .select("id,nome,email,whatsapp,visto,status_pipeline,nivel_elegibilidade,cidade,created_at,arquivado,motivo_exclusao,passou_por_disponivel", { count: "exact" })
-      .eq("conector_id", profile.id)
+      .eq("conector_id", alvoId)
       .order("created_at", { ascending: false })
       .range(p * PAGE_SIZE, (p + 1) * PAGE_SIZE - 1);
 
-    if (filtroStatus === "ativos")    query = query.eq("arquivado", false);
+    if (filtroStatus === "ativos")     query = query.eq("arquivado", false);
     if (filtroStatus === "arquivados") query = query.eq("arquivado", true);
     if (filtroPipeline) query = query.eq("status_pipeline", filtroPipeline);
-    if (busca) query = query.ilike("nome", `%${busca}%`);
+    if (busca)          query = query.ilike("nome", `%${busca}%`);
 
     const { data, count } = await query;
     setLeads((data ?? []) as Lead[]);
@@ -80,25 +94,44 @@ const MeusLeads = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchLeads(0); }, [profile?.id, filtroStatus, filtroPipeline, busca]);
+  useEffect(() => { fetchLeads(0); }, [profile?.id, conectorParam, filtroStatus, filtroPipeline, busca]);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
+      {/* Banner: visualizando leads de outro conector */}
+      {conectorParam && nomeConectorExterno && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+          <span className="text-blue-400 text-sm">👁</span>
+          <p className="text-sm text-blue-300 flex-1">
+            Visualizando leads de <span className="font-semibold">{nomeConectorExterno}</span>
+          </p>
+          <button onClick={() => navigate(-1)}
+            className="text-xs text-blue-400/60 hover:text-blue-300 transition-colors">
+            Voltar
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center gap-4">
-        <button onClick={() => navigate("/dashboard")}
+        <button onClick={() => navigate(conectorParam ? -1 : "/dashboard")}
           className="text-foreground/40 hover:text-foreground transition-colors">
           <ArrowLeft className="h-5 w-5"/>
         </button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-foreground">Meus Leads</h1>
+          <h1 className="text-2xl font-bold text-foreground">
+            {conectorParam && nomeConectorExterno ? `Leads de ${nomeConectorExterno.split(" ")[0]}` : "Meus Leads"}
+          </h1>
           <p className="text-foreground/50 text-sm mt-0.5">{total} lead{total !== 1 ? "s" : ""} no total</p>
         </div>
-        <Button variant="gold" onClick={() => navigate("/novo-lead")} className="gap-2">
-          <Plus className="h-4 w-4"/> Novo Lead
-        </Button>
+        {/* Só mostra botão Novo Lead se for a própria lista */}
+        {!conectorParam && (
+          <Button variant="gold" onClick={() => navigate("/novo-lead")} className="gap-2">
+            <Plus className="h-4 w-4"/> Novo Lead
+          </Button>
+        )}
       </div>
 
       {/* Filtros */}
@@ -191,10 +224,27 @@ const MeusLeads = () => {
                   <td className="p-4 text-xs text-foreground/50">{l.cidade ?? "—"}</td>
                   <td className="p-4 text-xs text-foreground/40">{fmtDate(l.created_at)}</td>
                   <td className="p-4 text-right">
-                    <button onClick={() => navigate(`/leads/${l.id}`)}
-                      className="text-xs text-primary/60 hover:text-primary transition-colors font-medium">
-                      Ver briefing →
-                    </button>
+                    <div className="flex items-center gap-2 justify-end">
+                      {/* Botão Lead Disponível — só para leads ativos nas fases iniciais */}
+                      {!l.arquivado && !l.passou_por_disponivel &&
+                        ["Lead Indicado","Em Qualificação"].includes(l.status_pipeline) && (
+                        <button
+                          onClick={async () => {
+                            const { error } = await supabase.from("leads" as any)
+                              .update({ status_pipeline: "Lead Disponível" }).eq("id", l.id);
+                            if (!error) setLeads(prev => prev.map(x =>
+                              x.id === l.id ? { ...x, status_pipeline: "Lead Disponível", passou_por_disponivel: true } : x
+                            ));
+                          }}
+                          className="text-xs text-yellow-400/70 hover:text-yellow-400 border border-yellow-500/20 hover:border-yellow-500/40 rounded px-2 py-1 transition-colors">
+                          Passar p/ líder
+                        </button>
+                      )}
+                      <button onClick={() => navigate(`/leads/${l.id}`)}
+                        className="text-xs text-primary/60 hover:text-primary transition-colors font-medium">
+                        Briefing →
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
