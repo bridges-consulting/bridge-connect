@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   UserCheck, UserX, Users, Loader2, RefreshCw,
   ClipboardList, ChevronDown, ChevronUp, Send, X,
-  UsersRound, Plus, Shield,
+  UsersRound, Plus, Shield, Search,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -213,18 +213,107 @@ function CreateEquipeModal({ lideres, onConfirm, onCancel, loading }: {
   );
 }
 
+// ─── Autocomplete de busca de conector ───────────────────────────────────────
+
+function BuscaConector({ candidaturaId, indicadoPorNome, indicadoPorProfileId, onVincular }: {
+  candidaturaId: string;
+  indicadoPorNome: string | null;
+  indicadoPorProfileId: string | null;
+  onVincular: (candidaturaId: string, profileId: string | null) => void;
+}) {
+  const [query, setQuery]             = useState("");
+  const [resultados, setResultados]   = useState<{ id: string; nome: string | null; email: string | null }[]>([]);
+  const [buscando, setBuscando]       = useState(false);
+  const [selecionado, setSelecionado] = useState<{ id: string; nome: string | null; email: string | null } | null>(null);
+  const [aberto, setAberto]           = useState(false);
+  const timeoutRef                    = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!indicadoPorProfileId) return;
+    supabase.from("profiles").select("id, nome, email")
+      .eq("id", indicadoPorProfileId).single()
+      .then(({ data }) => { if (data) setSelecionado(data); });
+  }, [indicadoPorProfileId]);
+
+  const buscar = (texto: string) => {
+    setQuery(texto);
+    setAberto(true);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (!texto.trim()) { setResultados([]); return; }
+    timeoutRef.current = setTimeout(async () => {
+      setBuscando(true);
+      const { data } = await supabase.from("profiles")
+        .select("id, nome, email").neq("role", "admin")
+        .or(`nome.ilike.%${texto}%,email.ilike.%${texto}%`).limit(8);
+      setResultados(data ?? []);
+      setBuscando(false);
+    }, 300);
+  };
+
+  const selecionar = (p: { id: string; nome: string | null; email: string | null }) => {
+    setSelecionado(p); setQuery(""); setAberto(false);
+    onVincular(candidaturaId, p.id);
+  };
+
+  const limpar = () => {
+    setSelecionado(null); setQuery("");
+    onVincular(candidaturaId, null);
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <p className="text-xs text-foreground/40">Vincular ao perfil do conector que indicou:</p>
+      {selecionado ? (
+        <div className="flex items-center justify-between px-3 py-2 rounded-md bg-green-500/10 border border-green-500/20">
+          <div>
+            <p className="text-xs font-medium text-green-300">{selecionado.nome || selecionado.email}</p>
+            <p className="text-[10px] text-green-400/60">{selecionado.email}</p>
+          </div>
+          <button onClick={limpar} className="text-foreground/30 hover:text-foreground ml-2"><X className="h-3.5 w-3.5"/></button>
+        </div>
+      ) : (
+        <div className="relative">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-foreground/30"/>
+            <input value={query} onChange={e => buscar(e.target.value)}
+              onFocus={() => query && setAberto(true)}
+              onBlur={() => setTimeout(() => setAberto(false), 150)}
+              placeholder={indicadoPorNome ? `Buscar "${indicadoPorNome}"...` : "Digite o nome do conector..."}
+              className="w-full bg-white/[0.05] border border-white/10 rounded-md pl-8 pr-3 py-2 text-sm text-foreground placeholder:text-foreground/25 focus:outline-none focus:border-primary/60 transition-colors"/>
+            {buscando && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-foreground/30"/>}
+          </div>
+          {aberto && resultados.length > 0 && (
+            <div className="absolute z-20 mt-1 w-full rounded-md border border-border bg-card shadow-lg overflow-hidden">
+              {resultados.map(p => (
+                <button key={p.id} onMouseDown={() => selecionar(p)}
+                  className="w-full flex flex-col px-3 py-2.5 text-left hover:bg-surface border-b border-border last:border-0 transition-colors">
+                  <span className="text-sm font-medium text-foreground">{p.nome || "—"}</span>
+                  <span className="text-xs text-foreground/40">{p.email}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {aberto && query && !buscando && resultados.length === 0 && (
+            <div className="absolute z-20 mt-1 w-full rounded-md border border-border bg-card px-3 py-3">
+              <p className="text-xs text-foreground/40">Nenhum conector encontrado para "{query}"</p>
+            </div>
+          )}
+        </div>
+      )}
+      {selecionado && <p className="text-xs text-green-400 flex items-center gap-1"><span>✓</span> Vínculo salvo — equipe criada automaticamente ao promover</p>}
+    </div>
+  );
+}
+
 // ─── Card de candidatura ──────────────────────────────────────────────────────
 
-function CandCard({ c, conectores, onAction, onVincularIndicador }: {
+function CandCard({ c, onAction, onVincularIndicador }: {
   c: Candidatura;
-  conectores: ConectorRow[];
   onAction: (id: string, a: "entrevista" | "aprovar" | "rejeitar") => void;
   onVincularIndicador: (candidaturaId: string, profileId: string | null) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const cfg = STATUS_CAND[c.status];
-
-  // Só mostra o seletor se veio por indicação e ainda não foi vinculado
   const precisaVincular = c.como_conheceu === "Indicação de outro conector";
 
   return (
@@ -248,34 +337,16 @@ function CandCard({ c, conectores, onAction, onVincularIndicador }: {
           {c.ocupacao && <div><p className="text-xs font-semibold text-foreground/40 uppercase tracking-widest mb-1">Ocupação</p><p className="text-sm text-foreground/70">{c.ocupacao}</p></div>}
           {c.tamanho_rede && <div><p className="text-xs font-semibold text-foreground/40 uppercase tracking-widest mb-1">Rede</p><p className="text-sm text-foreground/70">{c.tamanho_rede}</p></div>}
           {c.canais_indicacao?.length && <div><p className="text-xs font-semibold text-foreground/40 uppercase tracking-widest mb-1">Canais</p><div className="flex flex-wrap gap-1.5">{c.canais_indicacao.map(ch => <span key={ch} className="text-xs px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary/80">{ch.split("—")[0].trim()}</span>)}</div></div>}
-
-          {/* Indicação — texto e vínculo com perfil */}
           {c.como_conheceu && (
             <div>
               <p className="text-xs font-semibold text-foreground/40 uppercase tracking-widest mb-1">Como conheceu</p>
               <p className="text-sm text-foreground/70 mb-2">{c.como_conheceu}{c.indicado_por ? ` — "${c.indicado_por}"` : ""}</p>
               {precisaVincular && (
-                <div className="space-y-1.5">
-                  <p className="text-xs text-foreground/40">Vincular ao perfil do conector que indicou:</p>
-                  <select
-                    value={c.indicado_por_profile_id ?? ""}
-                    onChange={e => onVincularIndicador(c.id, e.target.value || null)}
-                    className="w-full bg-white/[0.05] border border-white/10 rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/60 transition-colors cursor-pointer">
-                    <option value="" style={{background:"#1a4a3a"}}>Não identificado</option>
-                    {conectores.filter(p => p.role !== "admin").map(p => (
-                      <option key={p.id} value={p.id} style={{background:"#1a4a3a"}}>{p.nome ?? p.email}</option>
-                    ))}
-                  </select>
-                  {c.indicado_por_profile_id && (
-                    <p className="text-xs text-green-400 flex items-center gap-1">
-                      <span>✓</span> Vínculo salvo — equipe será criada automaticamente ao promover
-                    </p>
-                  )}
-                </div>
+                <BuscaConector candidaturaId={c.id} indicadoPorNome={c.indicado_por}
+                  indicadoPorProfileId={c.indicado_por_profile_id} onVincular={onVincularIndicador}/>
               )}
             </div>
           )}
-
           {c.relacionamento && <div><p className="text-xs font-semibold text-foreground/40 uppercase tracking-widest mb-1">Relacionamento</p><p className="text-sm text-foreground/70">{c.relacionamento}</p></div>}
           {c.convidado_at && <div className="rounded-md bg-green-500/10 border border-green-500/20 px-3 py-2 text-xs text-green-300">Acesso enviado em {fmtDate(c.convidado_at)}</div>}
         </div>
@@ -373,14 +444,13 @@ const AdminConnectors = () => {
     setLoading(false);
   };
 
+  // Carrega conectores uma vez no mount — necessário para o vínculo de indicação nas candidaturas
+  useEffect(() => { fetchConectores(); }, []);
+
   useEffect(() => {
     if (tab === "conectores") fetchConectores();
     else if (tab === "candidaturas") fetchCandidaturas();
-    else {
-      // Equipes precisa dos profiles para o modal de criar/editar
-      fetchEquipes();
-      if (conectores.length === 0) fetchConectores();
-    }
+    else fetchEquipes();
   }, [tab]);
 
   // ── Toggle ativo/inativo ───────────────────────────────────────────────────
@@ -623,7 +693,7 @@ const AdminConnectors = () => {
                     <p className="text-foreground/40 text-sm">Nenhuma candidatura encontrada.</p>
                   </div>
                 ) : (
-                  <div className="space-y-3">{filteredCands.map(c=><CandCard key={c.id} c={c} conectores={conectores} onAction={handleAction} onVincularIndicador={handleVincularIndicador}/>)}</div>
+                  <div className="space-y-3">{filteredCands.map(c=><CandCard key={c.id} c={c} onAction={handleAction} onVincularIndicador={handleVincularIndicador}/>)}</div>
                 )}
               </div>
             )}
