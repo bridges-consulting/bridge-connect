@@ -628,7 +628,13 @@ const AdminConnectors = () => {
                             <Badge variant="outline" className={`text-xs ${ROLE_CLS[c.role]}`}>{ROLE_LABEL[c.role]}</Badge>
                           </td>
                           <td className="p-4">
-                            {alocandoConector === c.id ? (
+                            {c.equipe_nome ? (
+                              /* Já alocado — mostra equipe, sem opção de mover */
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-medium text-foreground/70">{c.equipe_nome}</span>
+                              </div>
+                            ) : alocandoConector === c.id ? (
+                              /* Modo de alocação ativo */
                               <div className="flex gap-2 items-center">
                                 <select value={alocandoEquipe} onChange={e=>setAlocandoEquipe(e.target.value)}
                                   className="bg-surface border border-border rounded px-2 py-1 text-xs text-foreground focus:outline-none focus:border-primary">
@@ -640,9 +646,10 @@ const AdminConnectors = () => {
                                 <button onClick={()=>{setAlocandoConector(null);setAlocandoEquipe("");}} className="text-xs text-foreground/40 hover:text-foreground">✕</button>
                               </div>
                             ) : (
+                              /* Sem equipe — botão para alocar */
                               <button onClick={()=>{setAlocandoConector(c.id);setAlocandoEquipe("");}}
-                                className="text-xs text-foreground/50 hover:text-primary transition-colors">
-                                {c.equipe_nome ?? <span className="text-foreground/25 italic">Sem equipe</span>}
+                                className="text-xs text-primary/50 hover:text-primary transition-colors border border-dashed border-primary/20 hover:border-primary/40 rounded px-2 py-1">
+                                + Alocar em equipe
                               </button>
                             )}
                           </td>
