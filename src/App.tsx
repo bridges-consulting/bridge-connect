@@ -16,6 +16,8 @@ import Academy from "./pages/Academy";
 import MeusLeads from "./pages/MeusLeads";
 import AdminLeads from "./pages/AdminLeads";
 import LeadBriefing from "./pages/LeadBriefing";
+import IndicacaoPublica from "./pages/IndicacaoPublica";
+import IndicacaoPublica from "./pages/IndicacaoPublica";
 import MinhaEquipe from "./pages/MinhaEquipe";
 import MeusLideres from "./pages/MeusLideres";
 import NotFound from "./pages/NotFound";
@@ -125,6 +127,8 @@ const App = () => (
         <Routes>
           <Route path="/login"    element={<Login />} />
           <Route path="/cadastro" element={<RegisterConector />} />
+          <Route path="/indicar"  element={<IndicacaoPublica />} />
+          <Route path="/indicar"  element={<IndicacaoPublica />} />
           <Route path="/*"        element={<AppLayout />} />
         </Routes>
       </BrowserRouter>
