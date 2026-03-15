@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Save, User, Briefcase, CreditCard, Users, CheckCircle } from "lucide-react";
+import { Loader2, Save, User, Briefcase, CreditCard, Users, CheckCircle, Link2, Copy, Check } from "lucide-react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -64,6 +64,50 @@ function ReadOnly({ value }: { value: string | null | undefined }) {
     <p className={`text-sm px-4 py-3 rounded-lg bg-white/[0.03] border border-white/[0.06] ${value ? "text-foreground" : "text-foreground/30 italic"}`}>
       {value || "Não informado"}
     </p>
+  );
+}
+
+// ─── Link de indicação ────────────────────────────────────────────────────────
+
+function LinkIndicacao({ profile }: { profile: { referral_code?: string | null; nome?: string | null } }) {
+  const [copiado, setCopiado] = useState(false);
+
+  if (!profile.referral_code) return null;
+
+  const link = `${window.location.origin}/indicar?ref=${profile.referral_code}`;
+
+  const copiar = () => {
+    navigator.clipboard.writeText(link);
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 2500);
+  };
+
+  return (
+    <div className="rounded-xl border border-primary/20 bg-primary/[0.04] p-6 space-y-4">
+      <div className="flex items-center gap-2.5 pb-1 border-b border-primary/15">
+        <Link2 className="h-4 w-4 text-primary"/>
+        <h2 className="text-sm font-semibold text-foreground tracking-wide">Meu Link de Indicação</h2>
+      </div>
+      <p className="text-xs text-foreground/50 leading-relaxed">
+        Compartilhe este link com potenciais candidatos. Ao preencher o formulário, o lead será vinculado automaticamente a você.
+      </p>
+      <div className="flex items-center gap-2">
+        <div className="flex-1 bg-white/[0.05] border border-white/10 rounded-lg px-4 py-2.5 text-xs text-foreground/60 truncate font-mono">
+          {link}
+        </div>
+        <button onClick={copiar}
+          className={`flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-semibold transition-all flex-shrink-0 ${
+            copiado
+              ? "bg-green-500/20 border border-green-500/30 text-green-400"
+              : "bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20"
+          }`}>
+          {copiado ? <><Check className="h-3.5 w-3.5"/> Copiado!</> : <><Copy className="h-3.5 w-3.5"/> Copiar</>}
+        </button>
+      </div>
+      <p className="text-[10px] text-foreground/30">
+        Código: <span className="font-mono tracking-widest text-primary/60">{profile.referral_code}</span>
+      </p>
+    </div>
   );
 }
 
@@ -356,6 +400,9 @@ const PerfilConector = () => {
           </div>
         )}
       </Section>
+
+      {/* Seção link de indicação */}
+      <LinkIndicacao profile={profile} />
 
       {/* Botão salvar inferior */}
       <div className="flex justify-end pb-4">
